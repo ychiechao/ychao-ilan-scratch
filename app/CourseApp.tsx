@@ -66,6 +66,21 @@ function statusLabel(status?: string) {
   return "未開始";
 }
 
+function initialMode(): "student" | "teacher" | "map" {
+  if (typeof window === "undefined") return "student";
+
+  const mode = new URLSearchParams(window.location.search).get("mode");
+  if (mode === "teacher" || mode === "map") return mode;
+  return "student";
+}
+
+function initialChapter() {
+  if (typeof window === "undefined") return 1;
+
+  const chapterNo = Number(new URLSearchParams(window.location.search).get("chapter"));
+  return chapters.some((chapter) => chapter.no === chapterNo) ? chapterNo : 1;
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -86,7 +101,7 @@ function readStored<T>(key: string): T | null {
 }
 
 export function CourseApp() {
-  const [mode, setMode] = useState<"student" | "teacher" | "map">("student");
+  const [mode, setMode] = useState<"student" | "teacher" | "map">(initialMode);
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(() => readStored("scratch-teacher"));
@@ -100,7 +115,7 @@ export function CourseApp() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [checked, setChecked] = useState<Record<number, string[]>>({});
-  const [selectedChapter, setSelectedChapter] = useState(1);
+  const [selectedChapter, setSelectedChapter] = useState(initialChapter);
 
   const earnedCount = badges.length;
   const progressPercent = Math.round((earnedCount / chapters.length) * 100);
@@ -393,7 +408,7 @@ export function CourseApp() {
 
         <section className="workspace">
           {mode === "student" && (
-            <div className="surface">
+            <div className="surface" id="student-entry">
               <div className="section-title">
                 <div>
                   <p className="eyebrow">Student</p>
@@ -569,7 +584,10 @@ export function CourseApp() {
                     <span>{chapter.range}</span>
                     <h3>{chapter.title}</h3>
                     <p>{chapter.objective}</p>
-                    <b>{chapter.badge}</b>
+                    <div className="course-card__actions">
+                      <b>{chapter.badge}</b>
+                      <a href={`/chapters/${chapter.no}`}>進入章節頁</a>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -615,6 +633,10 @@ function ChapterSubmit({
         {chapter.videoTitles.map((title) => (
           <span key={title}>{title}</span>
         ))}
+      </div>
+
+      <div className="chapter-tools">
+        <a href={`/chapters/${chapter.no}`}>閱讀本章教材頁</a>
       </div>
 
       <form className="submit-box" onSubmit={(event) => onSubmit(event, chapter.no)}>
