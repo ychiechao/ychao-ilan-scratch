@@ -478,6 +478,21 @@ select:focus {
   padding: 16px 22px 0;
 }
 
+.chapter-resources {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 16px 22px;
+}
+
+.chapter-resources .video-list {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
 .video-list span {
   background: #f3f5f1;
   border: 1px solid var(--line);
@@ -1534,6 +1549,16 @@ td:first-child span {
 
   .teacher-tools form {
     grid-template-columns: 1fr;
+  }
+
+  .chapter-resources {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chapter-tools a {
+    justify-content: center;
+    width: 100%;
   }
 
   .lesson-footer,

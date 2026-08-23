@@ -1130,14 +1130,15 @@ function ChapterSubmit({
         </div>
       </div>
 
-      <div className="video-list">
-        {chapter.videoTitles.map((title) => (
-          <span key={title}>{title}</span>
-        ))}
-      </div>
-
-      <div className="chapter-tools">
-        <a href={`/chapters/${chapter.no}`}>閱讀本章教材頁</a>
+      <div className="chapter-resources">
+        <div className="video-list">
+          {chapter.videoTitles.map((title) => (
+            <span key={title}>{title}</span>
+          ))}
+        </div>
+        <div className="chapter-tools">
+          <a href={`/chapters/${chapter.no}`}>閱讀本章教材頁</a>
+        </div>
       </div>
 
       <form className="submit-box" onSubmit={(event) => onSubmit(event, chapter.no)}>
