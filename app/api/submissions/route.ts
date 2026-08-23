@@ -46,7 +46,8 @@ export async function POST(request: Request) {
       `SELECT st.id, c.submission_url
        FROM students st
        JOIN classes c ON c.id = st.class_id
-       WHERE st.id = ?`
+       JOIN teachers t ON t.id = c.teacher_id
+       WHERE st.id = ? AND c.status = 'active' AND t.status = 'active'`
     )
     .bind(studentId)
     .first<{ id: string; submission_url: string }>();
@@ -129,7 +130,11 @@ export async function PATCH(request: Request) {
       .prepare(
         `UPDATE submissions SET status = 'uploaded', external_status = 'reported',
           feedback = '學生已回報完成雲端繳交，等待老師確認。', updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND student_id = ? AND status IN ('ready_to_upload', 'resubmit')`
+         WHERE id = ? AND student_id = ? AND status IN ('ready_to_upload', 'resubmit')
+           AND EXISTS (
+             SELECT 1 FROM students st JOIN classes c ON c.id = st.class_id JOIN teachers t ON t.id = c.teacher_id
+             WHERE st.id = submissions.student_id AND c.status = 'active' AND t.status = 'active'
+           )`
       )
       .bind(submissionId, studentId)
       .run();
@@ -147,9 +152,11 @@ export async function PATCH(request: Request) {
        FROM submissions s
        JOIN students st ON st.id = s.student_id
        JOIN classes c ON c.id = st.class_id
-       WHERE s.id = ?`
+       WHERE s.id = ? AND c.status = 'active' AND c.teacher_id = ? AND EXISTS (
+         SELECT 1 FROM teachers active_teacher WHERE active_teacher.id = c.teacher_id AND active_teacher.status = 'active'
+       )`
     )
-    .bind(submissionId)
+    .bind(submissionId, teacherId)
     .first<{ student_id: string; chapter_no: number; teacher_id: string }>();
   if (!row || row.teacher_id !== teacherId) return jsonError("找不到作品，或這不是你的班級。", 404);
 

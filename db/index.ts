@@ -26,6 +26,9 @@ const createStatements = [
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     pin_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'teacher',
+    status TEXT NOT NULL DEFAULT 'pending',
+    must_change_pin INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
   `CREATE TABLE IF NOT EXISTS classes (
@@ -35,6 +38,8 @@ const createStatements = [
     code TEXT NOT NULL UNIQUE,
     submission_url TEXT NOT NULL DEFAULT '',
     submission_label TEXT NOT NULL DEFAULT '作品繳交連結',
+    status TEXT NOT NULL DEFAULT 'pending',
+    reviewed_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (teacher_id) REFERENCES teachers(id)
   )`,
@@ -74,10 +79,18 @@ const createStatements = [
     FOREIGN KEY (student_id) REFERENCES students(id),
     UNIQUE (student_id, chapter_no)
   )`,
+  `CREATE TABLE IF NOT EXISTS admin_sessions (
+    token_hash TEXT PRIMARY KEY,
+    admin_id TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES teachers(id)
+  )`,
   `CREATE INDEX IF NOT EXISTS classes_teacher_idx ON classes (teacher_id)`,
   `CREATE INDEX IF NOT EXISTS students_class_idx ON students (class_id)`,
   `CREATE INDEX IF NOT EXISTS submissions_student_idx ON submissions (student_id)`,
   `CREATE INDEX IF NOT EXISTS badges_student_idx ON badges (student_id)`,
+  `CREATE INDEX IF NOT EXISTS admin_sessions_admin_idx ON admin_sessions (admin_id)`,
 ];
 
 export async function ensureDb() {

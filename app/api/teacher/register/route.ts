@@ -8,6 +8,8 @@ import {
 } from "../../_lib";
 import { ensureDb } from "../../../../db";
 
+const SUPERADMIN_EMAIL = "ychao.ilc@smail.ilc.edu.tw";
+
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
     name?: string;
@@ -37,20 +39,22 @@ export async function POST(request: Request) {
 
   const teacherId = createId("tea");
   const teacherPinHash = await hashPin(email, pin);
+  const role = email === SUPERADMIN_EMAIL ? "superadmin" : "teacher";
+  const status = role === "superadmin" ? "active" : "pending";
   await db
     .prepare(
-      "INSERT INTO teachers (id, name, email, pin_hash) VALUES (?, ?, ?, ?)"
+      "INSERT INTO teachers (id, name, email, pin_hash, role, status) VALUES (?, ?, ?, ?, ?, ?)"
     )
-    .bind(teacherId, name, email, teacherPinHash)
+    .bind(teacherId, name, email, teacherPinHash, role, status)
     .run();
 
   const classId = createId("cls");
   const code = await generateClassCode();
   await db
     .prepare(
-      "INSERT INTO classes (id, teacher_id, name, code) VALUES (?, ?, ?, ?)"
+      "INSERT INTO classes (id, teacher_id, name, code, status) VALUES (?, ?, ?, ?, ?)"
     )
-    .bind(classId, teacherId, className, code)
+    .bind(classId, teacherId, className, code, role === "superadmin" ? "active" : "pending")
     .run();
 
   const classRow = await db
@@ -59,7 +63,7 @@ export async function POST(request: Request) {
     .first();
 
   return Response.json({
-    teacher: { id: teacherId, name, email },
+    teacher: { id: teacherId, name, email, role, status, mustChangePin: false },
     classes: classRow ? [publicClass(classRow as never)] : [],
   });
 }

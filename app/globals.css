@@ -630,6 +630,183 @@ select:focus {
   padding: 16px;
 }
 
+.approval-panel,
+.admin-login,
+.pin-change,
+.roster-manager,
+.admin-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.approval-panel {
+  background: #fff5cf;
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+}
+
+.approval-panel span,
+.pin-change span,
+.roster-manager__head span,
+.admin-item span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.approval-panel h3,
+.approval-panel p,
+.roster-manager h3,
+.admin-section h3 {
+  margin: 0;
+}
+
+.approval-panel p {
+  color: #5c5238;
+  line-height: 1.65;
+}
+
+.approval-panel--class {
+  margin-top: 18px;
+}
+
+.pin-change {
+  align-items: end;
+  background: #eef3ee;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr minmax(140px, 0.8fr) minmax(140px, 0.8fr) auto;
+  margin-top: 18px;
+  padding: 16px;
+}
+
+.pin-change div {
+  display: grid;
+  gap: 5px;
+}
+
+.roster-manager {
+  margin-top: 18px;
+  padding: 18px;
+}
+
+.roster-manager__head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.roster-add,
+.roster-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 90px minmax(120px, 1fr) minmax(120px, 1fr) auto;
+}
+
+.roster-add {
+  background: #eef3ee;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.roster-list {
+  display: grid;
+  gap: 8px;
+}
+
+.roster-list > p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 4px 0;
+}
+
+.roster-row {
+  border-bottom: 1px solid var(--line);
+  grid-template-columns: 90px minmax(120px, 1fr) minmax(120px, 1fr) auto auto;
+  padding: 8px 0;
+}
+
+button.danger {
+  background: #9e3f35;
+}
+
+.admin-login {
+  display: grid;
+  gap: 12px;
+  max-width: 460px;
+  padding: 20px;
+}
+
+.admin-login h3 {
+  margin: 0;
+}
+
+.admin-console {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-summary {
+  align-items: end;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  margin: 0;
+}
+
+.admin-section {
+  padding: 16px;
+}
+
+.admin-section h3 {
+  margin-bottom: 12px;
+}
+
+.admin-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-item {
+  align-items: center;
+  background: #f8faf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(190px, 1fr) auto minmax(220px, 0.8fr);
+  padding: 12px;
+}
+
+.admin-item > div {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-item small {
+  color: var(--muted);
+}
+
+.admin-item form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(100px, 1fr) auto;
+}
+
+.admin-item--class {
+  grid-template-columns: minmax(190px, 1fr) auto auto auto;
+}
+
+.admin-item code {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 900;
+  padding: 8px 10px;
+}
+
 .teacher-auth form {
   display: grid;
   gap: 12px;
@@ -1282,6 +1459,12 @@ td:first-child span {
   .external-submit,
   .chapter-preview__grid,
   .chapter-preview__video,
+  .pin-change,
+  .roster-add,
+  .roster-row,
+  .admin-summary,
+  .admin-item,
+  .admin-item--class,
   .dashboard-summary {
     grid-template-columns: 1fr;
   }

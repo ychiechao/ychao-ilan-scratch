@@ -11,7 +11,11 @@ export async function GET(request: Request) {
 
   const db = await ensureDb();
   const student = await db
-    .prepare("SELECT id, class_id, seat_no, nickname, created_at FROM students WHERE id = ?")
+    .prepare(
+      `SELECT s.id, s.class_id, s.seat_no, s.nickname, s.created_at
+       FROM students s JOIN classes c ON c.id = s.class_id JOIN teachers t ON t.id = c.teacher_id
+       WHERE s.id = ? AND c.status = 'active' AND t.status = 'active'`
+    )
     .bind(studentId)
     .first();
 

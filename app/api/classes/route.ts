@@ -16,19 +16,22 @@ export async function POST(request: Request) {
 
   const db = await ensureDb();
   const teacher = await db
-    .prepare("SELECT id FROM teachers WHERE id = ?")
+    .prepare("SELECT id, status FROM teachers WHERE id = ?")
     .bind(teacherId)
-    .first();
+    .first<{ id: string; status: string }>();
 
   if (!teacher) {
     return jsonError("找不到老師帳號。", 404);
+  }
+  if (teacher.status !== "active") {
+    return jsonError("老師帳號尚未啟用，請等待超級管理者審核。", 403);
   }
 
   const classId = createId("cls");
   const code = await generateClassCode();
   await db
     .prepare(
-      "INSERT INTO classes (id, teacher_id, name, code) VALUES (?, ?, ?, ?)"
+      "INSERT INTO classes (id, teacher_id, name, code, status) VALUES (?, ?, ?, ?, 'pending')"
     )
     .bind(classId, teacherId, name, code)
     .run();
@@ -72,9 +75,10 @@ export async function PATCH(request: Request) {
     .prepare(
       `UPDATE classes
        SET submission_url = ?, submission_label = ?
-       WHERE id = ? AND teacher_id = ?`
+       WHERE id = ? AND teacher_id = ? AND status = 'active'
+         AND EXISTS (SELECT 1 FROM teachers WHERE id = ? AND status = 'active')`
     )
-    .bind(submissionUrl, submissionLabel, classId, teacherId)
+    .bind(submissionUrl, submissionLabel, classId, teacherId, teacherId)
     .run();
 
   if (!result.meta.changes) {

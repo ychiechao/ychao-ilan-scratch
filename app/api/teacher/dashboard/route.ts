@@ -13,7 +13,11 @@ export async function GET(request: Request) {
 
   const db = await ensureDb();
   const classRow = await db
-    .prepare("SELECT * FROM classes WHERE id = ? AND teacher_id = ?")
+    .prepare(
+      `SELECT c.* FROM classes c
+       JOIN teachers t ON t.id = c.teacher_id
+       WHERE c.id = ? AND c.teacher_id = ? AND t.status = 'active'`
+    )
     .bind(classId, teacherId)
     .first();
 

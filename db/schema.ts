@@ -6,6 +6,9 @@ export const teachers = sqliteTable("teachers", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   pinHash: text("pin_hash").notNull(),
+  role: text("role").notNull().default("teacher"),
+  status: text("status").notNull().default("pending"),
+  mustChangePin: integer("must_change_pin").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("teachers_email_idx").on(table.email),
@@ -18,6 +21,8 @@ export const classes = sqliteTable("classes", {
   code: text("code").notNull(),
   submissionUrl: text("submission_url").notNull().default(""),
   submissionLabel: text("submission_label").notNull().default("作品繳交連結"),
+  status: text("status").notNull().default("pending"),
+  reviewedAt: text("reviewed_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("classes_code_idx").on(table.code),
@@ -61,3 +66,10 @@ export const badges = sqliteTable("badges", {
 }, (table) => [
   uniqueIndex("badges_student_chapter_idx").on(table.studentId, table.chapterNo),
 ]);
+
+export const adminSessions = sqliteTable("admin_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  adminId: text("admin_id").notNull().references(() => teachers.id),
+  expiresAt: integer("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

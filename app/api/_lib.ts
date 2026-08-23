@@ -8,6 +8,8 @@ export type ClassRow = {
   code: string;
   submission_url?: string;
   submission_label?: string;
+  status?: string;
+  reviewed_at?: string;
   created_at: string;
 };
 
@@ -76,6 +78,8 @@ export function publicClass(row: ClassRow) {
     code: row.code,
     submissionUrl: row.submission_url ?? "",
     submissionLabel: row.submission_label ?? "作品繳交連結",
+    status: row.status ?? "pending",
+    reviewedAt: row.reviewed_at ?? null,
     createdAt: row.created_at,
   };
 }

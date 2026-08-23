@@ -28,12 +28,16 @@ export async function POST(request: Request) {
 
   const db = await ensureDb();
   const classRow = await db
-    .prepare("SELECT * FROM classes WHERE code = ?")
+    .prepare(
+      `SELECT c.* FROM classes c
+       JOIN teachers t ON t.id = c.teacher_id
+       WHERE c.code = ? AND c.status = 'active' AND t.status = 'active'`
+    )
     .bind(classCode)
     .first();
 
   if (!classRow) {
-    return jsonError("找不到這個班級代碼。", 404);
+    return jsonError("找不到已啟用的班級，請請老師確認班級已通過審核。", 404);
   }
 
   const existing = await db

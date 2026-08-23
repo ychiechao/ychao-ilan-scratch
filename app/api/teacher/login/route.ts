@@ -16,9 +16,9 @@ export async function POST(request: Request) {
 
   const db = await ensureDb();
   const teacher = await db
-    .prepare("SELECT id, name, email, pin_hash FROM teachers WHERE email = ?")
+    .prepare("SELECT id, name, email, pin_hash, role, status, must_change_pin FROM teachers WHERE email = ?")
     .bind(email)
-    .first<{ id: string; name: string; email: string; pin_hash: string }>();
+    .first<{ id: string; name: string; email: string; pin_hash: string; role: string; status: string; must_change_pin: number }>();
 
   if (!teacher || teacher.pin_hash !== (await hashPin(email, pin))) {
     return jsonError("Email 或 PIN 不正確。", 401);
@@ -30,7 +30,14 @@ export async function POST(request: Request) {
     .all();
 
   return Response.json({
-    teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
+    teacher: {
+      id: teacher.id,
+      name: teacher.name,
+      email: teacher.email,
+      role: teacher.role,
+      status: teacher.status,
+      mustChangePin: Boolean(teacher.must_change_pin),
+    },
     classes: (classes.results ?? []).map((row) => publicClass(row as never)),
   });
 }

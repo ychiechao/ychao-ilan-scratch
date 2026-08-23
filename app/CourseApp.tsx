@@ -3,9 +3,17 @@
 import { FormEvent, useMemo, useState } from "react";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 
-type AppMode = "student" | "teacher" | "map" | "chapter";
+type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
 
-type Teacher = { id: string; name: string; email: string };
+type Teacher = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  status?: string;
+  mustChangePin?: boolean;
+  must_change_pin?: number;
+};
 type ClassInfo = {
   id: string;
   teacherId?: string;
@@ -16,6 +24,7 @@ type ClassInfo = {
   submission_url?: string;
   submissionLabel?: string;
   submission_label?: string;
+  status?: string;
   createdAt?: string;
 };
 type Student = { id: string; classId?: string; class_id?: string; seatNo?: string; seat_no?: string; nickname: string };
@@ -53,6 +62,14 @@ type Dashboard = {
   submissions: Submission[];
   badges: Badge[];
 };
+
+type AdminClass = ClassInfo & {
+  teacher_name?: string;
+  teacher_email?: string;
+  student_count?: number;
+};
+
+type AdminDashboard = { teachers: Teacher[]; classes: AdminClass[] };
 
 type NoticeType = "success" | "error" | "info";
 type Notice = { type: NoticeType; text: string } | null;
@@ -93,11 +110,17 @@ function submissionLabelOf(item?: ClassInfo | null) {
   return item?.submissionLabel ?? item?.submission_label ?? "作品繳交連結";
 }
 
+function accountStatusLabel(status?: string) {
+  if (status === "active") return "已啟用";
+  if (status === "disabled") return "已停用";
+  return "待審核";
+}
+
 function initialMode(): AppMode {
   if (typeof window === "undefined") return "student";
 
   const mode = new URLSearchParams(window.location.search).get("mode");
-  if (mode === "teacher" || mode === "map" || mode === "chapter") return mode;
+  if (mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
   return "student";
 }
 
@@ -139,6 +162,8 @@ export function CourseApp() {
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(() => readStored("scratch-teacher"));
+  const [admin, setAdmin] = useState<Teacher | null>(() => readStored("scratch-admin"));
+  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard>({ teachers: [], classes: [] });
   const [classes, setClasses] = useState<ClassInfo[]>(() => readStored("scratch-classes") ?? []);
   const [selectedClassId, setSelectedClassId] = useState(
     () => readStored<ClassInfo[]>("scratch-classes")?.[0]?.id ?? ""
@@ -189,6 +214,14 @@ export function CourseApp() {
       )
     );
     setDashboard(data);
+  }
+
+  async function refreshAdmin(adminId = admin?.id) {
+    if (!adminId) return;
+    const data = await readJson<AdminDashboard>(
+      await fetch("/api/admin/dashboard")
+    );
+    setAdminDashboard(data);
   }
 
   async function joinStudent(event: FormEvent<HTMLFormElement>) {
@@ -369,7 +402,22 @@ export function CourseApp() {
       });
       localStorage.setItem("scratch-teacher", JSON.stringify(data.teacher));
       localStorage.setItem("scratch-classes", JSON.stringify(data.classes));
-      show("success", `班級已建立，代碼是 ${data.classes[0]?.code ?? ""}。`);
+      if (data.teacher.role === "superadmin") {
+        const session = await readJson<{ admin: Teacher }>(
+          await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+          })
+        );
+        setAdmin(session.admin);
+        localStorage.setItem("scratch-admin", JSON.stringify(session.admin));
+        setMode("admin");
+        await refreshAdmin(session.admin.id);
+        show("success", "超級管理者帳號已建立。");
+      } else {
+        show("success", `註冊完成，班級代碼是 ${data.classes[0]?.code ?? ""}，請等待超管啟用。`);
+      }
     } catch (error) {
       show("error", error instanceof Error ? error.message : "註冊失敗。");
     } finally {
@@ -394,10 +442,22 @@ export function CourseApp() {
       setSelectedClassId(data.classes[0]?.id ?? "");
       localStorage.setItem("scratch-teacher", JSON.stringify(data.teacher));
       localStorage.setItem("scratch-classes", JSON.stringify(data.classes));
-      if (data.classes[0]) {
+      if (data.teacher.role === "superadmin") {
+        const session = await readJson<{ admin: Teacher }>(
+          await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+          })
+        );
+        setAdmin(session.admin);
+        localStorage.setItem("scratch-admin", JSON.stringify(session.admin));
+        setMode("admin");
+        await refreshAdmin(session.admin.id);
+      } else if (data.classes[0] && data.teacher.status === "active") {
         await refreshDashboard(data.classes[0].id, data.teacher.id);
       }
-      show("success", "老師後台已登入。");
+      show("success", data.teacher.status === "active" ? "老師後台已登入。" : "帳號尚未啟用，請等待超管審核。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "登入失敗。");
     } finally {
@@ -428,10 +488,139 @@ export function CourseApp() {
         badges: [],
       });
       localStorage.setItem("scratch-classes", JSON.stringify(nextClasses));
-      show("success", `新班級代碼是 ${data.class.code}。`);
+      show("success", `新班級代碼是 ${data.class.code}，請等待超管啟用。`);
       event.currentTarget.reset();
     } catch (error) {
       show("error", error instanceof Error ? error.message : "建立班級失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loginAdmin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      const data = await readJson<{ admin: Teacher }>(
+        await fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+        })
+      );
+      setAdmin(data.admin);
+      localStorage.setItem("scratch-admin", JSON.stringify(data.admin));
+      await refreshAdmin(data.admin.id);
+      show("success", "超級管理後台已登入。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "超管登入失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runAdminAction(payload: Record<string, unknown>, successMessage: string) {
+    if (!admin) return;
+    setBusy(true);
+    try {
+      await readJson<{ ok: boolean }>(
+        await fetch("/api/admin/actions", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      );
+      await refreshAdmin(admin.id);
+      show("success", successMessage);
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "管理操作失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetTeacherPin(event: FormEvent<HTMLFormElement>, teacherId: string) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await runAdminAction(
+      { action: "reset_teacher_pin", teacherId, newPin: form.get("newPin") },
+      "已設定臨時 PIN，請口頭通知老師。"
+    );
+    event.currentTarget.reset();
+  }
+
+  async function changeTeacherPin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!teacher) return;
+    setBusy(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      await readJson<{ ok: boolean }>(
+        await fetch("/api/teacher/pin", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ teacherId: teacher.id, currentPin: form.get("currentPin"), newPin: form.get("newPin") }),
+        })
+      );
+      const nextTeacher = { ...teacher, mustChangePin: false };
+      setTeacher(nextTeacher);
+      localStorage.setItem("scratch-teacher", JSON.stringify(nextTeacher));
+      event.currentTarget.reset();
+      show("success", "PIN 已更新。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法更新 PIN。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveStudent(event: FormEvent<HTMLFormElement>, studentId?: string) {
+    event.preventDefault();
+    if (!teacher || !selectedClassId) return;
+    setBusy(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      await readJson<{ ok: boolean }>(
+        await fetch("/api/teacher/students", {
+          method: studentId ? "PATCH" : "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            teacherId: teacher.id,
+            classId: selectedClassId,
+            studentId,
+            seatNo: form.get("seatNo"),
+            nickname: form.get("nickname"),
+            pin: form.get("pin"),
+          }),
+        })
+      );
+      await refreshDashboard(selectedClassId);
+      if (!studentId) event.currentTarget.reset();
+      show("success", studentId ? "學生資料與 PIN 已更新。" : "已新增學生。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法儲存學生資料。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeStudent(student: Student) {
+    if (!teacher || !selectedClassId) return;
+    if (!window.confirm(`確定剔除 ${seatOf(student)} 號 ${student.nickname}？繳交與徽章也會刪除。`)) return;
+    setBusy(true);
+    try {
+      await readJson<{ ok: boolean }>(
+        await fetch("/api/teacher/students", {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ teacherId: teacher.id, classId: selectedClassId, studentId: student.id }),
+        })
+      );
+      await refreshDashboard(selectedClassId);
+      show("success", "已剔除學生。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法剔除學生。");
     } finally {
       setBusy(false);
     }
@@ -463,6 +652,13 @@ export function CourseApp() {
     setDashboard(emptyDashboard);
   }
 
+  async function logoutAdmin() {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
+    localStorage.removeItem("scratch-admin");
+    setAdmin(null);
+    setAdminDashboard({ teachers: [], classes: [] });
+  }
+
   const selected = chapters.find((chapter) => chapter.no === selectedChapter) ?? chapters[0];
 
   return (
@@ -480,6 +676,9 @@ export function CourseApp() {
             </button>
             <button onClick={() => setMode("teacher")} className={mode === "teacher" ? "active" : ""}>
               老師後台
+            </button>
+            <button onClick={() => setMode("admin")} className={mode === "admin" ? "active" : ""}>
+              超管後台
             </button>
             <button onClick={() => setMode("map")} className={mode === "map" ? "active" : ""}>
               課程地圖
@@ -659,6 +858,14 @@ export function CourseApp() {
                 </div>
               ) : (
                 <>
+                  {teacher.status && teacher.status !== "active" ? (
+                    <div className="approval-panel">
+                      <span>{accountStatusLabel(teacher.status)}</span>
+                      <h3>老師帳號正在等待啟用</h3>
+                      <p>請聯絡超級管理者啟用帳號。啟用後重新登入，即可繼續管理班級。</p>
+                    </div>
+                  ) : (
+                    <>
                   <div className="teacher-tools">
                     <div>
                       <span>目前老師</span>
@@ -675,7 +882,7 @@ export function CourseApp() {
                       >
                         {classes.map((item) => (
                           <option key={item.id} value={item.id}>
-                            {item.name} - {item.code}
+                            {item.name} - {item.code} - {accountStatusLabel(item.status)}
                           </option>
                         ))}
                       </select>
@@ -689,11 +896,13 @@ export function CourseApp() {
                     </button>
                   </div>
 
-                  <form
-                    className="submission-settings"
-                    key={selectedClassId}
-                    onSubmit={saveSubmissionSettings}
-                  >
+                  {dashboard.class?.status === "active" ? (
+                    <>
+                    <form
+                      className="submission-settings"
+                      key={selectedClassId}
+                      onSubmit={saveSubmissionSettings}
+                    >
                     <div>
                       <span>作品繳交設定</span>
                       <strong>由老師管理雲端原始檔</strong>
@@ -721,14 +930,75 @@ export function CourseApp() {
                         開啟收件頁面
                       </a>
                     )}
-                  </form>
+                    </form>
 
-                  <TeacherDashboard
-                    dashboard={dashboard}
-                    busy={busy}
-                    onReview={reviewSubmission}
-                  />
+                    <TeacherDashboard
+                      dashboard={dashboard}
+                      busy={busy}
+                      onReview={reviewSubmission}
+                    />
+
+                    <TeacherRoster
+                      students={dashboard.students}
+                      busy={busy}
+                      onSave={saveStudent}
+                      onRemove={removeStudent}
+                    />
+                    </>
+                  ) : (
+                    <div className="approval-panel approval-panel--class">
+                      <span>{accountStatusLabel(dashboard.class?.status)}</span>
+                      <h3>這個班級尚未啟用</h3>
+                      <p>班級代碼已產生，超管啟用後，學生才能加入，老師也才能編輯名冊。</p>
+                    </div>
+                  )}
+
+                  <form className="pin-change" onSubmit={changeTeacherPin}>
+                    <div>
+                      <span>{teacher.mustChangePin ? "需要更換" : "帳號安全"}</span>
+                      <strong>變更老師 PIN</strong>
+                    </div>
+                    <input name="currentPin" type="password" minLength={4} placeholder="目前或臨時 PIN" required />
+                    <input name="newPin" type="password" minLength={4} placeholder="新 PIN" required />
+                    <button disabled={busy}>更新 PIN</button>
+                  </form>
+                    </>
+                  )}
                 </>
+              )}
+            </div>
+          )}
+
+          {mode === "admin" && (
+            <div className="surface">
+              <div className="section-title">
+                <div>
+                  <p className="eyebrow">Super Admin</p>
+                  <h2>超級管理後台</h2>
+                </div>
+                {admin && <button className="ghost" onClick={logoutAdmin}>登出</button>}
+              </div>
+              {!admin ? (
+                <form className="admin-login" onSubmit={loginAdmin}>
+                  <h3>超級管理者登入</h3>
+                  <label>
+                    Email
+                    <input name="email" type="email" placeholder="admin@example.com" required />
+                  </label>
+                  <label>
+                    PIN
+                    <input name="pin" type="password" minLength={4} required />
+                  </label>
+                  <button disabled={busy}>進入管理後台</button>
+                </form>
+              ) : (
+                <AdminConsole
+                  dashboard={adminDashboard}
+                  busy={busy}
+                  onRefresh={() => refreshAdmin()}
+                  onAction={runAdminAction}
+                  onResetPin={resetTeacherPin}
+                />
               )}
             </div>
           )}
@@ -917,6 +1187,133 @@ function ChapterSubmit({
         </div>
       )}
     </article>
+  );
+}
+
+function TeacherRoster({
+  students,
+  busy,
+  onSave,
+  onRemove,
+}: {
+  students: Student[];
+  busy: boolean;
+  onSave: (event: FormEvent<HTMLFormElement>, studentId?: string) => void;
+  onRemove: (student: Student) => void;
+}) {
+  return (
+    <section className="roster-manager">
+      <div className="roster-manager__head">
+        <div>
+          <span>學生帳號</span>
+          <h3>班級名冊管理</h3>
+        </div>
+        <b>{students.length} 人</b>
+      </div>
+      <form className="roster-add" onSubmit={(event) => onSave(event)}>
+        <input name="seatNo" placeholder="座號" required />
+        <input name="nickname" placeholder="暱稱" required />
+        <input name="pin" type="password" minLength={4} placeholder="初始 PIN" required />
+        <button disabled={busy}>新增學生</button>
+      </form>
+      <div className="roster-list">
+        {students.length === 0 && <p>尚無學生，可由老師新增，或讓學生以班級代碼自行加入。</p>}
+        {students.map((item) => (
+          <form key={item.id} className="roster-row" onSubmit={(event) => onSave(event, item.id)}>
+            <input name="seatNo" defaultValue={seatOf(item)} aria-label={`${item.nickname}座號`} required />
+            <input name="nickname" defaultValue={item.nickname} aria-label="暱稱" required />
+            <input name="pin" type="password" minLength={4} placeholder="設定新 PIN" aria-label="新 PIN" required />
+            <button disabled={busy}>儲存</button>
+            <button type="button" className="danger" disabled={busy} onClick={() => onRemove(item)}>剔除</button>
+          </form>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AdminConsole({
+  dashboard,
+  busy,
+  onRefresh,
+  onAction,
+  onResetPin,
+}: {
+  dashboard: AdminDashboard;
+  busy: boolean;
+  onRefresh: () => void;
+  onAction: (payload: Record<string, unknown>, successMessage: string) => Promise<void>;
+  onResetPin: (event: FormEvent<HTMLFormElement>, teacherId: string) => void;
+}) {
+  const pendingTeachers = dashboard.teachers.filter((item) => item.role !== "superadmin" && item.status === "pending").length;
+  const pendingClasses = dashboard.classes.filter((item) => item.status === "pending").length;
+  return (
+    <div className="admin-console">
+      <div className="dashboard-summary admin-summary">
+        <div><span>教師帳號</span><strong>{dashboard.teachers.filter((item) => item.role !== "superadmin").length}</strong></div>
+        <div><span>待審教師</span><strong>{pendingTeachers}</strong></div>
+        <div><span>待審班級</span><strong>{pendingClasses}</strong></div>
+        <button className="ghost" disabled={busy} onClick={onRefresh}>更新資料</button>
+      </div>
+
+      <section className="admin-section">
+        <h3>教師帳號</h3>
+        <div className="admin-list">
+          {dashboard.teachers.map((item) => (
+            <article key={item.id} className="admin-item">
+              <div>
+                <span>{item.role === "superadmin" ? "超級管理者" : accountStatusLabel(item.status)}</span>
+                <strong>{item.name}</strong>
+                <small>{item.email}</small>
+              </div>
+              {item.role !== "superadmin" && (
+                <>
+                  <button
+                    disabled={busy}
+                    onClick={() => onAction(
+                      { action: "teacher_status", teacherId: item.id, status: item.status === "active" ? "disabled" : "active" },
+                      item.status === "active" ? "已停用教師帳號。" : "已啟用教師帳號。"
+                    )}
+                  >
+                    {item.status === "active" ? "停用" : "啟用"}
+                  </button>
+                  <form onSubmit={(event) => onResetPin(event, item.id)}>
+                    <input name="newPin" type="password" minLength={4} placeholder="臨時 PIN" required />
+                    <button disabled={busy}>重設 PIN</button>
+                  </form>
+                </>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-section">
+        <h3>所有班級與代碼</h3>
+        <div className="admin-list">
+          {dashboard.classes.map((item) => (
+            <article key={item.id} className="admin-item admin-item--class">
+              <div>
+                <span>{accountStatusLabel(item.status)}</span>
+                <strong>{item.name}</strong>
+                <small>{item.teacher_name} · {item.teacher_email}</small>
+              </div>
+              <code>{item.code}</code>
+              <b>{item.student_count ?? 0} 位學生</b>
+              <button
+                disabled={busy}
+                onClick={() => onAction(
+                  { action: "class_status", classId: item.id, status: item.status === "active" ? "disabled" : "active" },
+                  item.status === "active" ? "已停用班級。" : "已啟用班級。"
+                )}
+              >
+                {item.status === "active" ? "停用" : "啟用"}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
