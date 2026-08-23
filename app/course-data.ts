@@ -34,9 +34,7 @@ export const chapters: Chapter[] = [
     videoIds: ["NSIGbZ9j3zY"],
     videoTitles: ["01 Scratch 基本操作環境介紹"],
     checks: [
-      { id: "open-editor", label: "我能開啟 Scratch 3 編輯器並找到舞台、角色與積木區。" },
-      { id: "save-project", label: "我的作品已經存成 .sb3 檔案。" },
-      { id: "first-script", label: "我至少完成一段角色可以執行的程式。" },
+      { id: "save-project", label: "我已將作品下載為 .sb3 檔案，並選擇這個檔案進行上傳檢核。" },
     ],
   },
   {
@@ -51,9 +49,9 @@ export const chapters: Chapter[] = [
     videoIds: ["-TT0OIgRbgY"],
     videoTitles: ["02 Scratch 角色的移動：前進"],
     checks: [
-      { id: "move-block", label: "我有使用移動或方向相關積木。" },
-      { id: "green-flag", label: "按下綠旗後，角色會照我的設定移動。" },
-      { id: "debug-move", label: "我測試過角色不會立刻跑出舞台。" },
+      { id: "green-flag", label: "按下綠旗後，角色會先回到設定好的初始位置與方向。" },
+      { id: "move-block", label: "我有使用前進指令與重複積木，讓角色繞舞台一圈。" },
+      { id: "debug-move", label: "角色繞行舞台時不會超出舞台範圍。" },
     ],
   },
   {

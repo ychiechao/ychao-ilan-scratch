@@ -47,10 +47,20 @@ test("server-renders a standalone chapter page", async () => {
   assert.match(html, /內容說明/);
   assert.match(html, /章節影片/);
   assert.match(html, /自我檢核/);
+  assert.match(html, /我已將作品下載為 \.sb3 檔案/);
   assert.match(html, /youtube\.com\/embed\/NSIGbZ9j3zY/);
   assert.doesNotMatch(html, /embed\/videoseries/);
   assert.match(html, /href="\/chapters\/2"/);
   assert.match(html, /href="\/\?mode=student(?:&amp;|&)chapter=1#student-entry"/);
+});
+
+test("renders the revised chapter 2 checklist", async () => {
+  const response = await render("/chapters/2");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /角色會先回到設定好的初始位置與方向/);
+  assert.match(html, /使用前進指令與重複積木/);
+  assert.match(html, /不會超出舞台範圍/);
 });
 
 test("renders the verified videos for every chapter", async () => {
