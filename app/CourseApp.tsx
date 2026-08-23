@@ -470,7 +470,7 @@ export function CourseApp() {
           <p className="eyebrow">宜蘭縣國小程式設計自學</p>
           <h1>宜蘭 Scratch 基礎課程</h1>
           <p className="hero__copy">
-            12 堂射擊遊戲課程，學生上傳 Scratch 作品完成自我檢核，老師即時掌握班級進度與徽章。
+            12 堂射擊遊戲課程，學生在裝置上完成自我檢核，老師以自選雲端收件並掌握進度。
           </p>
           <div className="hero__actions">
             <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>

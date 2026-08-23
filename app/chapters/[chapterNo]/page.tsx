@@ -173,7 +173,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               ))}
             </div>
             <p className="lesson-submit-hint">
-              完成檢核後，上傳 .sb3 作品檔。通過後會取得「{chapter.badge}」。
+              完成檢核後，到老師指定的雲端空間繳交 .sb3。老師確認後會取得「{chapter.badge}」。
             </p>
             <Link className="lesson-submit-link" href={studentCheckUrl}>
               到學生入口上傳作品
