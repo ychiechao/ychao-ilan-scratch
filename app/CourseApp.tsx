@@ -703,32 +703,34 @@ export function CourseApp() {
 
       {notice && <div className={`notice notice--${notice.type}`}>{notice.text}</div>}
 
-      <section className="layout">
-        <aside className="chapter-rail">
-          <div className="rail-head">
-            <span>章節</span>
-            <a href={playlistUrl} target="_blank" rel="noreferrer">
-              YouTube
-            </a>
-          </div>
-          {chapters.map((chapter) => {
-            const earned = badgeMap.has(chapter.no);
-            return (
-              <button
-                key={chapter.no}
-                className={`chapter-link ${selectedChapter === chapter.no ? "selected" : ""} ${earned ? "earned" : ""}`}
-                onClick={() => {
-                  setSelectedChapter(chapter.no);
-                  setMode(student ? "student" : "chapter");
-                }}
-              >
-                <span>{String(chapter.no).padStart(2, "0")}</span>
-                <strong>{chapter.title}</strong>
-                <small>{earned ? "已得徽章" : chapter.range}</small>
-              </button>
-            );
-          })}
-        </aside>
+      <section className={`layout ${mode === "teacher" || mode === "admin" ? "layout--backend" : ""}`}>
+        {mode !== "teacher" && mode !== "admin" && (
+          <aside className="chapter-rail">
+            <div className="rail-head">
+              <span>章節</span>
+              <a href={playlistUrl} target="_blank" rel="noreferrer">
+                YouTube
+              </a>
+            </div>
+            {chapters.map((chapter) => {
+              const earned = badgeMap.has(chapter.no);
+              return (
+                <button
+                  key={chapter.no}
+                  className={`chapter-link ${selectedChapter === chapter.no ? "selected" : ""} ${earned ? "earned" : ""}`}
+                  onClick={() => {
+                    setSelectedChapter(chapter.no);
+                    setMode(student ? "student" : "chapter");
+                  }}
+                >
+                  <span>{String(chapter.no).padStart(2, "0")}</span>
+                  <strong>{chapter.title}</strong>
+                  <small>{earned ? "已得徽章" : chapter.range}</small>
+                </button>
+              );
+            })}
+          </aside>
+        )}
 
         <section className="workspace">
           {mode === "student" && (

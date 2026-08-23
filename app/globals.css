@@ -199,6 +199,10 @@ main {
   padding: 24px clamp(20px, 5vw, 72px) 64px;
 }
 
+.layout--backend {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .chapter-rail {
   align-self: start;
   display: grid;
