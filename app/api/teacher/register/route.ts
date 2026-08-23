@@ -48,13 +48,20 @@ export async function POST(request: Request) {
     .bind(teacherId, name, email, teacherPinHash, role, status)
     .run();
 
+  if (role === "superadmin") {
+    return Response.json({
+      teacher: { id: teacherId, name, email, role, status, mustChangePin: false },
+      classes: [],
+    });
+  }
+
   const classId = createId("cls");
   const code = await generateClassCode();
   await db
     .prepare(
       "INSERT INTO classes (id, teacher_id, name, code, status) VALUES (?, ?, ?, ?, ?)"
     )
-    .bind(classId, teacherId, className, code, role === "superadmin" ? "active" : "pending")
+    .bind(classId, teacherId, className, code, "pending")
     .run();
 
   const classRow = await db
