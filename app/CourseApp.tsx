@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { chapters, playlistUrl } from "./course-data";
+import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
+
+type AppMode = "student" | "teacher" | "map" | "chapter";
 
 type Teacher = { id: string; name: string; email: string };
 type ClassInfo = {
@@ -91,11 +93,11 @@ function submissionLabelOf(item?: ClassInfo | null) {
   return item?.submissionLabel ?? item?.submission_label ?? "作品繳交連結";
 }
 
-function initialMode(): "student" | "teacher" | "map" {
+function initialMode(): AppMode {
   if (typeof window === "undefined") return "student";
 
   const mode = new URLSearchParams(window.location.search).get("mode");
-  if (mode === "teacher" || mode === "map") return mode;
+  if (mode === "teacher" || mode === "map" || mode === "chapter") return mode;
   return "student";
 }
 
@@ -133,7 +135,7 @@ function readStored<T>(key: string): T | null {
 }
 
 export function CourseApp() {
-  const [mode, setMode] = useState<"student" | "teacher" | "map">(initialMode);
+  const [mode, setMode] = useState<AppMode>(initialMode);
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(() => readStored("scratch-teacher"));
@@ -518,7 +520,7 @@ export function CourseApp() {
                 className={`chapter-link ${selectedChapter === chapter.no ? "selected" : ""} ${earned ? "earned" : ""}`}
                 onClick={() => {
                   setSelectedChapter(chapter.no);
-                  if (mode === "map") return;
+                  setMode(student ? "student" : "chapter");
                 }}
               >
                 <span>{String(chapter.no).padStart(2, "0")}</span>
@@ -756,6 +758,59 @@ export function CourseApp() {
                 ))}
               </div>
             </div>
+          )}
+
+          {mode === "chapter" && (
+            <article className={`surface chapter-preview chapter-preview--${selected.color}`}>
+              <div className="chapter-preview__head">
+                <div>
+                  <p className="eyebrow">{selected.range}</p>
+                  <h2>{selected.title}</h2>
+                  <p>{selected.objective}</p>
+                </div>
+                <span>{selected.badge}</span>
+              </div>
+
+              <div className="chapter-preview__grid">
+                <section>
+                  <h3>學習目標</h3>
+                  <ul>
+                    {selected.lessonPoints.map((point) => <li key={point}>{point}</li>)}
+                  </ul>
+                </section>
+                <section>
+                  <h3>內容說明</h3>
+                  <p>{selected.overview}</p>
+                </section>
+              </div>
+
+              <section className="chapter-preview__video">
+                <div>
+                  <h3>本章影片</h3>
+                  <p>{selected.videoTitles.join("、")}</p>
+                </div>
+                <div className="video-frame">
+                  <iframe
+                    src={playlistEmbedUrl(selected.videoStartIndex)}
+                    title={`${selected.title}教學影片`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+
+              <section className="chapter-preview__checks">
+                <h3>自我檢核</h3>
+                <div>
+                  {selected.checks.map((check) => <span key={check.id}>{check.label}</span>)}
+                </div>
+              </section>
+
+              <div className="chapter-preview__actions">
+                <a href={`/chapters/${selected.no}`}>閱讀完整章節頁</a>
+                <button onClick={() => setMode("student")}>學生登入與作品檢核</button>
+              </div>
+            </article>
           )}
         </section>
       </section>

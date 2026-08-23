@@ -778,6 +778,109 @@ td:first-child span {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.chapter-preview {
+  display: grid;
+  gap: 20px;
+}
+
+.chapter-preview__head {
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding-bottom: 18px;
+}
+
+.chapter-preview__head h2 {
+  font-size: 2rem;
+  margin: 4px 0 10px;
+}
+
+.chapter-preview__head p:not(.eyebrow) {
+  color: #41564e;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.chapter-preview__head > span {
+  background: var(--ink);
+  border-radius: 8px;
+  color: white;
+  font-weight: 900;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.chapter-preview__grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chapter-preview__grid section,
+.chapter-preview__checks {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.chapter-preview h3 {
+  margin: 0 0 10px;
+}
+
+.chapter-preview__grid p,
+.chapter-preview__grid li {
+  color: #41564e;
+  line-height: 1.7;
+}
+
+.chapter-preview__grid ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.chapter-preview__video {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(0, 1.45fr);
+}
+
+.chapter-preview__video p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.chapter-preview__checks > div {
+  display: grid;
+  gap: 8px;
+}
+
+.chapter-preview__checks span {
+  background: #f6f8f4;
+  border-left: 4px solid var(--green);
+  line-height: 1.55;
+  padding: 10px 12px;
+}
+
+.chapter-preview__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chapter-preview__actions a {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 8px;
+  color: white;
+  display: inline-flex;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
 .course-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1177,6 +1280,8 @@ td:first-child span {
   .teacher-tools,
   .submission-settings,
   .external-submit,
+  .chapter-preview__grid,
+  .chapter-preview__video,
   .dashboard-summary {
     grid-template-columns: 1fr;
   }
@@ -1217,6 +1322,7 @@ td:first-child span {
   }
 
   .chapter-panel__head,
+  .chapter-preview__head,
   .section-title,
   .student-strip,
   .latest {
