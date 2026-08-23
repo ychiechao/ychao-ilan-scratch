@@ -8,6 +8,13 @@
       "when": 1787409797586,
       "tag": "0000_crazy_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787500800000,
+      "tag": "0001_external_submissions",
+      "breakpoints": true
     }
   ]
 }

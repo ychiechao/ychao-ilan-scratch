@@ -1,4 +1,4 @@
-import { cleanText, getStudentProgress, jsonError } from "../../_lib";
+import { cleanText, getStudentProgress, jsonError, publicClass } from "../../_lib";
 import { ensureDb } from "../../../../db";
 
 export async function GET(request: Request) {
@@ -20,10 +20,10 @@ export async function GET(request: Request) {
   }
 
   const classRow = await db
-    .prepare("SELECT id, teacher_id, name, code, created_at FROM classes WHERE id = ?")
+    .prepare("SELECT * FROM classes WHERE id = ?")
     .bind((student as { class_id: string }).class_id)
     .first();
   const progress = await getStudentProgress(studentId);
 
-  return Response.json({ student, class: classRow, ...progress });
+  return Response.json({ student, class: publicClass(classRow as never), ...progress });
 }

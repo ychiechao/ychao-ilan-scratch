@@ -20,14 +20,6 @@ export function getD1() {
   return env.DB;
 }
 
-export function getSubmissionsBucket() {
-  if (!env.SUBMISSIONS) {
-    throw new Error("Cloudflare R2 binding `SUBMISSIONS` is unavailable.");
-  }
-
-  return env.SUBMISSIONS;
-}
-
 const createStatements = [
   `CREATE TABLE IF NOT EXISTS teachers (
     id TEXT PRIMARY KEY,
@@ -41,6 +33,8 @@ const createStatements = [
     teacher_id TEXT NOT NULL,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
+    submission_url TEXT NOT NULL DEFAULT '',
+    submission_label TEXT NOT NULL DEFAULT '作品繳交連結',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (teacher_id) REFERENCES teachers(id)
   )`,
@@ -64,6 +58,7 @@ const createStatements = [
     checklist_json TEXT NOT NULL,
     auto_score INTEGER NOT NULL,
     status TEXT NOT NULL,
+    external_status TEXT NOT NULL DEFAULT 'not_required',
     feedback TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

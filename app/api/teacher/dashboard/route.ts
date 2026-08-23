@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const submissions = await db
     .prepare(
       `SELECT s.id, s.student_id, s.chapter_no, s.file_name, s.file_size,
-        s.auto_score, s.status, s.feedback, s.updated_at
+        s.auto_score, s.status, s.external_status, s.feedback, s.updated_at
        FROM submissions s
        JOIN students st ON st.id = s.student_id
        WHERE st.class_id = ?

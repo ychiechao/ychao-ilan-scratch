@@ -4,7 +4,18 @@ import { FormEvent, useMemo, useState } from "react";
 import { chapters, playlistUrl } from "./course-data";
 
 type Teacher = { id: string; name: string; email: string };
-type ClassInfo = { id: string; teacherId?: string; teacher_id?: string; name: string; code: string; createdAt?: string };
+type ClassInfo = {
+  id: string;
+  teacherId?: string;
+  teacher_id?: string;
+  name: string;
+  code: string;
+  submissionUrl?: string;
+  submission_url?: string;
+  submissionLabel?: string;
+  submission_label?: string;
+  createdAt?: string;
+};
 type Student = { id: string; classId?: string; class_id?: string; seatNo?: string; seat_no?: string; nickname: string };
 type Submission = {
   id: string;
@@ -17,6 +28,8 @@ type Submission = {
   auto_score?: number;
   autoScore?: number;
   status: string;
+  external_status?: string;
+  externalStatus?: string;
   feedback?: string;
   updated_at?: string;
   updatedAt?: string;
@@ -63,8 +76,19 @@ function seatOf(student: Student) {
 
 function statusLabel(status?: string) {
   if (status === "passed") return "通過";
+  if (status === "ready_to_upload") return "待繳交作品";
+  if (status === "uploaded") return "等待老師確認";
+  if (status === "resubmit") return "請重新繳交";
   if (status === "needs_fix") return "待修正";
   return "未開始";
+}
+
+function submissionUrlOf(item?: ClassInfo | null) {
+  return item?.submissionUrl ?? item?.submission_url ?? "";
+}
+
+function submissionLabelOf(item?: ClassInfo | null) {
+  return item?.submissionLabel ?? item?.submission_label ?? "作品繳交連結";
 }
 
 function initialMode(): "student" | "teacher" | "map" {
@@ -200,25 +224,116 @@ export function CourseApp() {
     if (!student) return;
     setBusy(true);
     const form = new FormData(event.currentTarget);
-    form.set("studentId", student.id);
-    form.set("chapterNo", String(chapterNo));
-    form.set("checklist", JSON.stringify(checked[chapterNo] ?? []));
+    const file = form.get("file");
 
     try {
+      if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".sb3")) {
+        throw new Error("請選擇 Scratch .sb3 檔案。");
+      }
+      if (file.size <= 0 || file.size > 20 * 1024 * 1024) {
+        throw new Error("檔案需小於 20MB。");
+      }
+      const signature = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      if (signature[0] !== 0x50 || signature[1] !== 0x4b) {
+        throw new Error("這個檔案不像有效的 Scratch 作品，請從 Scratch 重新儲存。");
+      }
       const data = await readJson<{ submissions: Submission[]; badges: Badge[]; submission: { status: string; badge: string | null } }>(
-        await fetch("/api/submissions", { method: "POST", body: form })
+        await fetch("/api/submissions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            studentId: student.id,
+            chapterNo,
+            checklist: checked[chapterNo] ?? [],
+            fileName: file.name,
+            fileSize: file.size,
+          }),
+        })
       );
       setSubmissions(data.submissions);
       setBadges(data.badges);
       show(
         data.submission.status === "passed" ? "success" : "info",
-        data.submission.badge
-          ? `檢核通過，取得「${data.submission.badge}」徽章。`
-          : "已上傳，還有檢核項目需要修正。"
+        data.submission.status === "passed"
+          ? "檢核通過，已取得本章徽章。"
+          : data.submission.status === "ready_to_upload"
+            ? "自我檢核通過，接著請到老師指定的雲端空間繳交。"
+            : "還有檢核項目需要修正。"
       );
       if (teacher && selectedClassId) refreshDashboard(selectedClassId);
     } catch (error) {
       show("error", error instanceof Error ? error.message : "上傳失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function markExternalUploaded(submissionId: string) {
+    if (!student) return;
+    setBusy(true);
+    try {
+      const data = await readJson<{ submissions: Submission[]; badges: Badge[] }>(
+        await fetch("/api/submissions", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "mark_uploaded", studentId: student.id, submissionId }),
+        })
+      );
+      setSubmissions(data.submissions);
+      setBadges(data.badges);
+      show("success", "已通知老師，收到確認後就會取得徽章。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法回報繳交狀態。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveSubmissionSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!teacher || !selectedClassId) return;
+    setBusy(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      const data = await readJson<{ class: ClassInfo }>(
+        await fetch("/api/classes", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            teacherId: teacher.id,
+            classId: selectedClassId,
+            submissionUrl: form.get("submissionUrl"),
+            submissionLabel: form.get("submissionLabel"),
+          }),
+        })
+      );
+      const nextClasses = classes.map((item) => item.id === data.class.id ? data.class : item);
+      setClasses(nextClasses);
+      setDashboard((current) => ({ ...current, class: data.class }));
+      localStorage.setItem("scratch-classes", JSON.stringify(nextClasses));
+      show("success", submissionUrlOf(data.class) ? "已儲存這個班級的作品繳交連結。" : "已取消這個班級的外部繳交。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法儲存繳交設定。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reviewSubmission(submissionId: string, action: "confirm" | "resubmit") {
+    if (!teacher || !selectedClassId) return;
+    setBusy(true);
+    try {
+      await readJson<{ ok: boolean }>(
+        await fetch("/api/submissions", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action, teacherId: teacher.id, submissionId }),
+        })
+      );
+      await refreshDashboard(selectedClassId);
+      show("success", action === "confirm" ? "已確認收到作品並發放徽章。" : "已通知學生重新繳交。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法更新作品狀態。");
     } finally {
       setBusy(false);
     }
@@ -379,8 +494,8 @@ export function CourseApp() {
             <small>{student ? "已取得徽章" : "進度資料"}</small>
           </div>
           <div>
-            <span>{student ? `${progressPercent}%` : "R2"}</span>
-            <small>{student ? "完成率" : "作品上傳"}</small>
+            <span>{student ? `${progressPercent}%` : "Drive"}</span>
+            <small>{student ? "完成率" : "雲端繳交"}</small>
           </div>
         </div>
       </section>
@@ -470,8 +585,11 @@ export function CourseApp() {
                     earned={badgeMap.has(selected.no)}
                     checked={checked[selected.no] ?? []}
                     busy={busy}
+                    submissionUrl={submissionUrlOf(studentClass)}
+                    submissionLabel={submissionLabelOf(studentClass)}
                     onToggle={toggleCheck}
                     onSubmit={submitChapter}
+                    onMarkUploaded={markExternalUploaded}
                   />
 
                   <div className="badge-wall">
@@ -569,7 +687,45 @@ export function CourseApp() {
                     </button>
                   </div>
 
-                  <TeacherDashboard dashboard={dashboard} />
+                  <form
+                    className="submission-settings"
+                    key={selectedClassId}
+                    onSubmit={saveSubmissionSettings}
+                  >
+                    <div>
+                      <span>作品繳交設定</span>
+                      <strong>由老師管理雲端原始檔</strong>
+                    </div>
+                    <label>
+                      按鈕名稱
+                      <input
+                        name="submissionLabel"
+                        defaultValue={submissionLabelOf(dashboard.class)}
+                        placeholder="例如：繳交到五年甲班 Google 表單"
+                      />
+                    </label>
+                    <label className="submission-url-field">
+                      收件連結
+                      <input
+                        name="submissionUrl"
+                        type="url"
+                        defaultValue={submissionUrlOf(dashboard.class)}
+                        placeholder="https://forms.google.com/..."
+                      />
+                    </label>
+                    <button disabled={busy}>儲存繳交設定</button>
+                    {submissionUrlOf(dashboard.class) && (
+                      <a href={submissionUrlOf(dashboard.class)} target="_blank" rel="noreferrer">
+                        開啟收件頁面
+                      </a>
+                    )}
+                  </form>
+
+                  <TeacherDashboard
+                    dashboard={dashboard}
+                    busy={busy}
+                    onReview={reviewSubmission}
+                  />
                 </>
               )}
             </div>
@@ -613,16 +769,22 @@ function ChapterSubmit({
   earned,
   checked,
   busy,
+  submissionUrl,
+  submissionLabel,
   onToggle,
   onSubmit,
+  onMarkUploaded,
 }: {
   chapter: (typeof chapters)[number];
   submission?: Submission;
   earned: boolean;
   checked: string[];
   busy: boolean;
+  submissionUrl: string;
+  submissionLabel: string;
   onToggle: (chapterNo: number, checkId: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>, chapterNo: number) => void;
+  onMarkUploaded: (submissionId: string) => void;
 }) {
   return (
     <article className={`chapter-panel chapter-panel--${chapter.color}`}>
@@ -661,11 +823,36 @@ function ChapterSubmit({
           ))}
         </div>
         <label className="file-field">
-          上傳 Scratch 檔案
-          <input name="file" type="file" accept=".sb3" />
+          選擇 Scratch 檔案進行檢核
+          <input name="file" type="file" accept=".sb3" required />
+          <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
         </label>
         <button disabled={busy}>送出檢核</button>
       </form>
+
+      {submission && submissionUrl && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
+        <div className="external-submit">
+          <div>
+            <span>第二步</span>
+            <strong>將原始作品繳交給老師</strong>
+            <p>上傳完成後，回到這裡通知老師。</p>
+          </div>
+          <a href={submissionUrl} target="_blank" rel="noreferrer">{submissionLabel}</a>
+          <button type="button" disabled={busy} onClick={() => onMarkUploaded(submission.id)}>
+            我已完成上傳
+          </button>
+        </div>
+      )}
+
+      {submission?.status === "uploaded" && (
+        <div className="external-submit external-submit--waiting">
+          <div>
+            <span>已回報</span>
+            <strong>等待老師確認作品</strong>
+            <p>老師確認後，本章徽章會自動點亮。</p>
+          </div>
+        </div>
+      )}
 
       {submission && (
         <div className="latest">
@@ -678,7 +865,15 @@ function ChapterSubmit({
   );
 }
 
-function TeacherDashboard({ dashboard }: { dashboard: Dashboard }) {
+function TeacherDashboard({
+  dashboard,
+  busy,
+  onReview,
+}: {
+  dashboard: Dashboard;
+  busy: boolean;
+  onReview: (submissionId: string, action: "confirm" | "resubmit") => void;
+}) {
   const badgeSet = new Set(
     dashboard.badges.map((badge) => `${studentIdOf(badge)}:${chapterNumber(badge)}`)
   );
@@ -737,7 +932,19 @@ function TeacherDashboard({ dashboard }: { dashboard: Dashboard }) {
                     const earned = badgeSet.has(key);
                     return (
                       <td key={chapter.no} className={earned ? "cell-pass" : submission ? "cell-wait" : ""}>
-                        {earned ? "徽章" : submission ? "上傳" : "-"}
+                        {earned ? (
+                          "徽章"
+                        ) : submission?.status === "uploaded" ? (
+                          <div className="review-actions">
+                            <span>待確認</span>
+                            <button disabled={busy} onClick={() => onReview(submission.id, "confirm")}>
+                              收到
+                            </button>
+                            <button className="ghost" disabled={busy} onClick={() => onReview(submission.id, "resubmit")}>
+                              補交
+                            </button>
+                          </div>
+                        ) : submission ? statusLabel(submission.status) : "-"}
                       </td>
                     );
                   })}

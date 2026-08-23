@@ -516,6 +516,56 @@ select:focus {
   padding: 10px 0 0;
 }
 
+.file-field small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.external-submit {
+  align-items: center;
+  background: #e8f5ec;
+  border-top: 1px solid #95d1b5;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 18px 22px;
+}
+
+.external-submit div {
+  display: grid;
+  gap: 4px;
+}
+
+.external-submit span {
+  color: #176348;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.external-submit p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.external-submit a {
+  background: var(--ink);
+  border-radius: 8px;
+  color: white;
+  font-weight: 900;
+  padding: 11px 14px;
+  text-decoration: none;
+}
+
+.external-submit--waiting {
+  background: #fff5cf;
+  border-color: #e1c96d;
+  grid-template-columns: 1fr;
+}
+
 .latest {
   background: #f6f8f4;
   border-top: 1px solid var(--line);
@@ -595,6 +645,50 @@ select:focus {
   gap: 14px;
   grid-template-columns: 0.8fr 1fr 1.2fr;
   margin-bottom: 18px;
+}
+
+.submission-settings {
+  align-items: end;
+  background: #eef3ee;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 0.8fr 1fr minmax(220px, 1.8fr) auto;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.submission-settings div {
+  display: grid;
+  gap: 5px;
+}
+
+.submission-settings span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.submission-settings a {
+  color: var(--green-dark);
+  font-size: 0.88rem;
+  font-weight: 900;
+  grid-column: 1 / -1;
+}
+
+.review-actions {
+  display: grid;
+  gap: 5px;
+  min-width: 74px;
+}
+
+.review-actions span {
+  font-size: 0.74rem;
+}
+
+.review-actions button {
+  min-height: 30px;
+  padding: 4px 7px;
 }
 
 .teacher-tools div {
@@ -1081,6 +1175,8 @@ td:first-child span {
   .form-grid,
   .teacher-auth,
   .teacher-tools,
+  .submission-settings,
+  .external-submit,
   .dashboard-summary {
     grid-template-columns: 1fr;
   }

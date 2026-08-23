@@ -3,7 +3,7 @@
   "name": "yilan-scratch-course",
   "account_id": "b6242a0bc552fc979813bd8e1462417a",
   "main": "./worker/index.ts",
-  "compatibility_date": "2026-08-23",
+  "compatibility_date": "2026-05-22",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "assets": {
@@ -17,12 +17,6 @@
       "database_name": "yilan-scratch-db",
       "database_id": "5cc98373-c87b-4b05-8b2c-6a2d881cfd9c",
       "migrations_dir": "./drizzle"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "SUBMISSIONS",
-      "bucket_name": "yilan-scratch-submissions"
     }
   ],
   "observability": {

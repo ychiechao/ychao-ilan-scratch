@@ -6,6 +6,8 @@ export type ClassRow = {
   teacher_id: string;
   name: string;
   code: string;
+  submission_url?: string;
+  submission_label?: string;
   created_at: string;
 };
 
@@ -72,6 +74,8 @@ export function publicClass(row: ClassRow) {
     teacherId: row.teacher_id,
     name: row.name,
     code: row.code,
+    submissionUrl: row.submission_url ?? "",
+    submissionLabel: row.submission_label ?? "作品繳交連結",
     createdAt: row.created_at,
   };
 }
@@ -112,7 +116,7 @@ export async function getStudentProgress(studentId: string) {
   const submissions = await db
     .prepare(
       `SELECT id, student_id, chapter_no, file_name, file_size, checklist_json,
-        auto_score, status, feedback, created_at, updated_at
+        auto_score, status, external_status, feedback, created_at, updated_at
        FROM submissions
        WHERE student_id = ?
        ORDER BY chapter_no ASC`

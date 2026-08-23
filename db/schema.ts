@@ -16,6 +16,8 @@ export const classes = sqliteTable("classes", {
   teacherId: text("teacher_id").notNull().references(() => teachers.id),
   name: text("name").notNull(),
   code: text("code").notNull(),
+  submissionUrl: text("submission_url").notNull().default(""),
+  submissionLabel: text("submission_label").notNull().default("作品繳交連結"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("classes_code_idx").on(table.code),
@@ -42,6 +44,7 @@ export const submissions = sqliteTable("submissions", {
   checklistJson: text("checklist_json").notNull(),
   autoScore: integer("auto_score").notNull(),
   status: text("status").notNull(),
+  externalStatus: text("external_status").notNull().default("not_required"),
   feedback: text("feedback").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
