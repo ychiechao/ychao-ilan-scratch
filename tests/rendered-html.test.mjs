@@ -47,7 +47,32 @@ test("server-renders a standalone chapter page", async () => {
   assert.match(html, /內容說明/);
   assert.match(html, /章節影片/);
   assert.match(html, /自我檢核/);
-  assert.match(html, /youtube\.com\/embed\/videoseries/);
+  assert.match(html, /youtube\.com\/embed\/NSIGbZ9j3zY/);
+  assert.doesNotMatch(html, /embed\/videoseries/);
   assert.match(html, /href="\/chapters\/2"/);
   assert.match(html, /href="\/\?mode=student(?:&amp;|&)chapter=1#student-entry"/);
+});
+
+test("renders the verified videos for every chapter", async () => {
+  const cases = [
+    { path: "/chapters/1", videoIds: ["NSIGbZ9j3zY"] },
+    { path: "/chapters/2", videoIds: ["-TT0OIgRbgY"] },
+    { path: "/chapters/3", videoIds: ["Jvpr-2X5EJs", "HYsreADflfs"] },
+    { path: "/chapters/4", videoIds: ["Ljh-5RNk0Uk"] },
+    { path: "/chapters/5", videoIds: ["QPD05s8Kc8w"] },
+    { path: "/chapters/6", videoIds: ["gKWIFFpyW3c"] },
+    { path: "/chapters/7", videoIds: ["K7AhE9D2yJg"] },
+    { path: "/chapters/8", videoIds: ["NeOBcpvmAuw"] },
+    { path: "/chapters/9", videoIds: ["RHICqwxNtWY"] },
+    { path: "/chapters/10", videoIds: ["F0DISm_jCxw"] },
+    { path: "/chapters/11", videoIds: ["kafiqqrHbQM", "DOsK2b0b5rQ"] },
+    { path: "/chapters/12", videoIds: ["7tiS3n6N4_c"] },
+  ];
+
+  for (const item of cases) {
+    const response = await render(item.path);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    item.videoIds.forEach((videoId) => assert.match(html, new RegExp(`youtube\\.com/embed/${videoId}`)));
+  }
 });

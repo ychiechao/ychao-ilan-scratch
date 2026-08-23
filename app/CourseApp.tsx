@@ -1065,13 +1065,20 @@ export function CourseApp() {
                   <h3>本章影片</h3>
                   <p>{selected.videoTitles.join("、")}</p>
                 </div>
-                <div className="video-frame">
-                  <iframe
-                    src={playlistEmbedUrl(selected.videoStartIndex)}
-                    title={`${selected.title}教學影片`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                <div className="video-player-list">
+                  {selected.videoIds.map((videoId, index) => (
+                    <div className="video-player" key={videoId}>
+                      <strong>{selected.videoTitles[index]}</strong>
+                      <div className="video-frame">
+                        <iframe
+                          src={playlistEmbedUrl(videoId)}
+                          title={selected.videoTitles[index]}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
 

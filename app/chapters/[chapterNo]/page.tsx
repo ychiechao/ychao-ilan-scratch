@@ -148,14 +148,21 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               <span>03</span>
               <h2 id="video">章節影片</h2>
             </div>
-            <div className="video-frame">
-              <iframe
-                title={`${chapter.range} ${chapter.title}影片`}
-                src={playlistEmbedUrl(chapter.videoStartIndex)}
-                loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
+            <div className="video-player-list">
+              {chapter.videoIds.map((videoId, index) => (
+                <div className="video-player" key={videoId}>
+                  <h3>{chapter.videoTitles[index]}</h3>
+                  <div className="video-frame">
+                    <iframe
+                      title={chapter.videoTitles[index]}
+                      src={playlistEmbedUrl(videoId)}
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 

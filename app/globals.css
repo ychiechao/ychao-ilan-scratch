@@ -1062,6 +1062,26 @@ td:first-child span {
   line-height: 1.6;
 }
 
+.video-player-list,
+.video-player {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.video-player + .video-player {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.video-player > strong,
+.video-player > h3 {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .chapter-preview__checks > div {
   display: grid;
   gap: 8px;
