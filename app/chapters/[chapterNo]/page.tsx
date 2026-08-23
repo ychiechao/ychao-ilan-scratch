@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Deployed chapter routes require full-page navigation. */
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { chapters, playlistEmbedUrl, playlistUrl } from "../../course-data";
 
 type ChapterPageProps = {
@@ -64,9 +64,9 @@ export default function ChapterPage({ params }: ChapterPageProps) {
     return (
       <main className="lesson-page">
         <section className="lesson-empty">
-          <Link className="back-link" href="/?mode=map">
+          <a className="back-link" href="/?mode=map">
             回課程地圖
-          </Link>
+          </a>
           <h1>找不到這個章節</h1>
           <p>請回到課程地圖，選擇 1 到 12 的章節頁面。</p>
         </section>
@@ -82,14 +82,14 @@ export default function ChapterPage({ params }: ChapterPageProps) {
     <main className="lesson-page">
       <section className={`lesson-hero lesson-hero--${chapter.color}`}>
         <div>
-          <Link className="back-link" href="/?mode=map">
+          <a className="back-link" href="/?mode=map">
             回課程地圖
-          </Link>
+          </a>
           <p className="eyebrow">{chapter.range}</p>
           <h1>{chapter.title}</h1>
           <p>{chapter.objective}</p>
           <div className="lesson-hero__actions">
-            <Link href={studentCheckUrl}>前往上傳檢核</Link>
+            <a href={studentCheckUrl}>前往上傳檢核</a>
             <a href={playlistUrl} target="_blank" rel="noreferrer">
               開啟播放清單
             </a>
@@ -105,14 +105,14 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         <nav className="lesson-nav" aria-label="章節導覽">
           <span>12 堂章節</span>
           {chapters.map((item) => (
-            <Link
+            <a
               key={item.no}
               className={item.no === chapter.no ? "selected" : ""}
               href={`/chapters/${item.no}`}
             >
               <b>{String(item.no).padStart(2, "0")}</b>
               {item.title}
-            </Link>
+            </a>
           ))}
         </nav>
 
@@ -175,14 +175,14 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             <p className="lesson-submit-hint">
               完成檢核後，到老師指定的雲端空間繳交 .sb3。老師確認後會取得「{chapter.badge}」。
             </p>
-            <Link className="lesson-submit-link" href={studentCheckUrl}>
+            <a className="lesson-submit-link" href={studentCheckUrl}>
               到學生入口上傳作品
-            </Link>
+            </a>
           </section>
 
           <footer className="lesson-footer">
-            {previous ? <Link href={`/chapters/${previous.no}`}>上一章：{previous.title}</Link> : <span />}
-            {next ? <Link href={`/chapters/${next.no}`}>下一章：{next.title}</Link> : <span />}
+            {previous ? <a href={`/chapters/${previous.no}`}>上一章：{previous.title}</a> : <span />}
+            {next ? <a href={`/chapters/${next.no}`}>下一章：{next.title}</a> : <span />}
           </footer>
         </article>
       </div>

@@ -32,6 +32,7 @@ test("server-renders the course platform shell", async () => {
   assert.match(html, /學生入口/);
   assert.match(html, /老師後台/);
   assert.match(html, /課程地圖/);
+  assert.match(html, /aria-label="回到課程地圖"[^>]*>\s*宜蘭 Scratch 基礎課程/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
 
@@ -47,4 +48,6 @@ test("server-renders a standalone chapter page", async () => {
   assert.match(html, /章節影片/);
   assert.match(html, /自我檢核/);
   assert.match(html, /youtube\.com\/embed\/videoseries/);
+  assert.match(html, /href="\/chapters\/2"/);
+  assert.match(html, /href="\/\?mode=student(?:&amp;|&)chapter=1#student-entry"/);
 });

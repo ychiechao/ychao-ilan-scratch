@@ -87,6 +87,21 @@ main {
   max-width: 900px;
 }
 
+.hero__content h1 button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.hero__content h1 button:hover,
+.hero__content h1 button:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+}
+
 .hero__copy {
   color: #30483f;
   font-size: 1.12rem;
