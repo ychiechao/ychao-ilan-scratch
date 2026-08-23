@@ -30,8 +30,9 @@ export async function POST(request: Request) {
   if (!fileName.toLowerCase().endsWith(".sb3")) {
     return jsonError("請選擇 Scratch .sb3 檔案。");
   }
-  if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > MAX_FILE_SIZE) {
-    return jsonError("檔案需小於 20MB。");
+  const maxSubmissionSize = chapterNo === 3 ? MAX_FILE_SIZE * 2 : MAX_FILE_SIZE;
+  if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > maxSubmissionSize) {
+    return jsonError(chapterNo === 3 ? "兩個檔案都需小於 20MB。" : "檔案需小於 20MB。");
   }
 
   const chapter = getChapter(chapterNo);

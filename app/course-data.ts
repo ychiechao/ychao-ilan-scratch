@@ -10,6 +10,13 @@ export type Chapter = {
   videoIds: string[];
   videoTitles: string[];
   checks: { id: string; label: string }[];
+  submissionTasks?: {
+    id: string;
+    title: string;
+    videoTitle: string;
+    description: string;
+    checkIds: string[];
+  }[];
 };
 
 export const playlistUrl =
@@ -66,9 +73,28 @@ export const chapters: Chapter[] = [
     videoIds: ["Jvpr-2X5EJs", "HYsreADflfs"],
     videoTitles: ["03 Scratch 角色移動：滑行", "04 Scratch 角色的移動：XY 座標"],
     checks: [
-      { id: "xy", label: "按下綠旗後，角色會先回到設定好的初始座標。" },
-      { id: "glide", label: "使用至少四段滑行到指定位置，讓角色繞舞台一圈。" },
-      { id: "repeat-test", label: "每一段滑行時間都使用隨機取數積木。" },
+      { id: "glide-start", label: "滑行作品按下綠旗後，角色會先回到設定好的初始座標。" },
+      { id: "glide-loop", label: "使用至少四段滑行到指定位置，讓角色繞舞台一圈。" },
+      { id: "glide-random", label: "每一段滑行時間都使用隨機取數積木。" },
+      { id: "coordinate-start", label: "座標作品按下綠旗後，角色會先回到設定好的初始座標。" },
+      { id: "coordinate-motion", label: "使用重複與改變 X／Y 座標積木，讓角色繞舞台一圈。" },
+      { id: "coordinate-boundary", label: "座標移動路線不會超出舞台，最後會回到起點附近。" },
+    ],
+    submissionTasks: [
+      {
+        id: "glide",
+        title: "作品 1｜滑行移動",
+        videoTitle: "03 Scratch 角色移動：滑行",
+        description: "上傳使用滑行到指定位置，且滑行時間使用隨機取數的作品。",
+        checkIds: ["glide-start", "glide-loop", "glide-random"],
+      },
+      {
+        id: "coordinates",
+        title: "作品 2｜XY 座標移動",
+        videoTitle: "04 Scratch 角色的移動：XY 座標",
+        description: "上傳使用重複與改變 X／Y 座標繞舞台一圈的作品。",
+        checkIds: ["coordinate-start", "coordinate-motion", "coordinate-boundary"],
+      },
     ],
   },
   {

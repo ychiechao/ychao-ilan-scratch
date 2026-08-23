@@ -39,14 +39,21 @@ type MotionState = {
   direction: number;
   points: Array<{ x: number; y: number }>;
   usedRepeatForward: boolean;
+  coordinateAxes: Set<"x" | "y">;
   hasInitialPosition: boolean;
 };
+
+export type ScratchTask = "default" | "glide" | "coordinates";
 
 const STAGE_X = 240;
 const STAGE_Y = 180;
 const MAX_PROJECT_JSON = 10 * 1024 * 1024;
 
-export async function analyzeScratchFile(file: File, chapterNo: number): Promise<ScratchAnalysis> {
+export async function analyzeScratchFile(
+  file: File,
+  chapterNo: number,
+  task: ScratchTask = "default",
+): Promise<ScratchAnalysis> {
   let archive: Record<string, Uint8Array>;
   try {
     archive = unzipSync(new Uint8Array(await file.arrayBuffer()), {
@@ -77,7 +84,9 @@ export async function analyzeScratchFile(file: File, chapterNo: number): Promise
     return result([{ id: "save-project", passed: true, detail: "已成功讀取 Scratch .sb3 作品。" }]);
   }
   if (chapterNo === 2) return analyzeChapterTwo(sprites);
-  if (chapterNo === 3) return analyzeChapterThree(sprites);
+  if (chapterNo === 3) {
+    return task === "coordinates" ? analyzeChapterThreeCoordinates(sprites) : analyzeChapterThreeGlide(sprites);
+  }
 
   return result([]);
 }
@@ -94,6 +103,7 @@ function analyzeChapterTwo(sprites: ScratchTarget[]): ScratchAnalysis {
         direction: finite(sprite.direction, 90),
         points: [],
         usedRepeatForward: false,
+        coordinateAxes: new Set(),
         hasInitialPosition: false,
       };
       state.points.push({ x: state.x, y: state.y });
@@ -130,7 +140,7 @@ function analyzeChapterTwo(sprites: ScratchTarget[]): ScratchAnalysis {
   ]);
 }
 
-function analyzeChapterThree(sprites: ScratchTarget[]): ScratchAnalysis {
+function analyzeChapterThreeGlide(sprites: ScratchTarget[]): ScratchAnalysis {
   let best: { initial: boolean; glides: ScratchBlock[]; blocks: Record<string, ScratchBlock>; start: { x: number; y: number } } | null = null;
 
   for (const sprite of sprites) {
@@ -163,23 +173,72 @@ function analyzeChapterThree(sprites: ScratchTarget[]): ScratchAnalysis {
 
   return result([
     {
-      id: "xy",
+      id: "glide-start",
       passed: Boolean(best?.initial),
       detail: best?.initial ? "綠旗開始後有設定角色的初始座標。" : "請先用定位積木設定角色的初始座標。",
     },
     {
-      id: "glide",
+      id: "glide-loop",
       passed: glideLoop,
       detail: glideLoop
         ? "已用四段以上的滑行繞舞台一圈，並回到起點附近。"
         : "請用至少四段滑行移動到舞台四周，最後回到起點附近。",
     },
     {
-      id: "repeat-test",
+      id: "glide-random",
       passed: randomDuration,
       detail: randomDuration
         ? "每一段滑行時間都使用隨機取數。"
         : "每一段滑行的秒數都要放入隨機取數積木。",
+    },
+  ]);
+}
+
+function analyzeChapterThreeCoordinates(sprites: ScratchTarget[]): ScratchAnalysis {
+  let best: MotionState | null = null;
+
+  for (const sprite of sprites) {
+    for (const block of Object.values(sprite.blocks)) {
+      if (block.opcode !== "event_whenflagclicked") continue;
+      const state: MotionState = {
+        x: finite(sprite.x, 0),
+        y: finite(sprite.y, 0),
+        direction: finite(sprite.direction, 90),
+        points: [],
+        usedRepeatForward: false,
+        coordinateAxes: new Set(),
+        hasInitialPosition: false,
+      };
+      state.points.push({ x: state.x, y: state.y });
+      runChain(block.next, sprite.blocks, state, false, 0);
+      if (!best || coordinateQuality(state) > coordinateQuality(best)) best = state;
+    }
+  }
+
+  const initial = Boolean(best?.hasInitialPosition);
+  const usesBothAxes = Boolean(best?.coordinateAxes.has("x") && best.coordinateAxes.has("y"));
+  const loop = Boolean(best && isClosedStageLoop(best.points));
+  const inBounds = Boolean(best && loop && staysOnStage(best.points));
+
+  return result([
+    {
+      id: "coordinate-start",
+      passed: initial,
+      detail: initial ? "綠旗開始後有設定角色的初始座標。" : "請先用定位積木設定角色的初始座標。",
+    },
+    {
+      id: "coordinate-motion",
+      passed: usesBothAxes && loop,
+      detail: usesBothAxes && loop
+        ? "已在重複積木中改變 X 與 Y 座標，並繞完一圈。"
+        : "請在重複積木中分別改變 X 與 Y 座標，走完舞台四邊。",
+    },
+    {
+      id: "coordinate-boundary",
+      passed: inBounds,
+      detail: inBounds
+        ? "模擬座標路線都在舞台內，最後回到起點附近。"
+        : "座標路線需保持在舞台內，最後回到起點附近。",
     },
   ]);
 }
@@ -218,6 +277,22 @@ function runChain(
       state.direction += numberInput(block.inputs.DEGREES, blocks, 0);
     } else if (block.opcode === "motion_turnleft") {
       state.direction -= numberInput(block.inputs.DEGREES, blocks, 0);
+    } else if (block.opcode === "motion_changexby") {
+      state.x += numberInput(block.inputs.DX, blocks, 0);
+      if (insideRepeat) state.coordinateAxes.add("x");
+      pushPoint(state);
+    } else if (block.opcode === "motion_changeyby") {
+      state.y += numberInput(block.inputs.DY, blocks, 0);
+      if (insideRepeat) state.coordinateAxes.add("y");
+      pushPoint(state);
+    } else if (block.opcode === "motion_setx") {
+      state.x = numberInput(block.inputs.X, blocks, state.x);
+      if (insideRepeat) state.coordinateAxes.add("x");
+      pushPoint(state);
+    } else if (block.opcode === "motion_sety") {
+      state.y = numberInput(block.inputs.Y, blocks, state.y);
+      if (insideRepeat) state.coordinateAxes.add("y");
+      pushPoint(state);
     } else if (block.opcode === "control_repeat") {
       const count = Math.min(200, Math.max(0, Math.round(numberInput(block.inputs.TIMES, blocks, 0))));
       const substack = blockReference(block.inputs.SUBSTACK, blocks);
@@ -294,6 +369,10 @@ function staysOnStage(points: Array<{ x: number; y: number }>) {
 
 function motionQuality(state: MotionState) {
   return state.points.length + (state.hasInitialPosition ? 1000 : 0) + (state.usedRepeatForward ? 1000 : 0);
+}
+
+function coordinateQuality(state: MotionState) {
+  return state.points.length + (state.hasInitialPosition ? 1000 : 0) + state.coordinateAxes.size * 1000;
 }
 
 function pushPoint(state: MotionState) {

@@ -175,7 +175,7 @@ export function CourseApp() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [checked, setChecked] = useState<Record<number, string[]>>({});
-  const [scratchResults, setScratchResults] = useState<Record<number, ScratchAnalysis>>({});
+  const [scratchResults, setScratchResults] = useState<Record<string, ScratchAnalysis>>({});
   const [selectedChapter, setSelectedChapter] = useState(initialChapter);
 
   const earnedCount = badges.length;
@@ -261,24 +261,36 @@ export function CourseApp() {
     if (!student) return;
     setBusy(true);
     const form = new FormData(event.currentTarget);
-    const file = form.get("file");
 
     try {
-      if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".sb3")) {
-        throw new Error("請選擇 Scratch .sb3 檔案。");
-      }
-      if (file.size <= 0 || file.size > 20 * 1024 * 1024) {
-        throw new Error("檔案需小於 20MB。");
-      }
-      const signature = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-      if (signature[0] !== 0x50 || signature[1] !== 0x4b) {
-        throw new Error("這個檔案不像有效的 Scratch 作品，請從 Scratch 重新儲存。");
-      }
-      const analysis = chapterNo <= 3 ? await analyzeScratchFile(file, chapterNo) : null;
-      const checklist = analysis?.passedIds ?? checked[chapterNo] ?? [];
-      if (analysis) {
-        setScratchResults((current) => ({ ...current, [chapterNo]: analysis }));
-        setChecked((current) => ({ ...current, [chapterNo]: analysis.passedIds }));
+      const files = chapterNo === 3
+        ? [form.get("file-glide"), form.get("file-coordinates")]
+        : [form.get("file")];
+      const scratchFiles = files.map((file) => validateScratchFile(file));
+      await Promise.all(scratchFiles.map(async (file) => {
+        const signature = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+        if (signature[0] !== 0x50 || signature[1] !== 0x4b) {
+          throw new Error("這個檔案不像有效的 Scratch 作品，請從 Scratch 重新儲存。");
+        }
+      }));
+      let checklist = checked[chapterNo] ?? [];
+      if (chapterNo === 3) {
+        const [glide, coordinates] = await Promise.all([
+          analyzeScratchFile(scratchFiles[0], 3, "glide"),
+          analyzeScratchFile(scratchFiles[1], 3, "coordinates"),
+        ]);
+        checklist = [...glide.passedIds, ...coordinates.passedIds];
+        setScratchResults((current) => ({
+          ...current,
+          "3:glide": glide,
+          "3:coordinates": coordinates,
+        }));
+        setChecked((current) => ({ ...current, [chapterNo]: checklist }));
+      } else if (chapterNo <= 2) {
+        const analysis = await analyzeScratchFile(scratchFiles[0], chapterNo);
+        checklist = analysis.passedIds;
+        setScratchResults((current) => ({ ...current, [`${chapterNo}:default`]: analysis }));
+        setChecked((current) => ({ ...current, [chapterNo]: checklist }));
       }
       const data = await readJson<{
         submissions: Submission[];
@@ -292,8 +304,8 @@ export function CourseApp() {
             studentId: student.id,
             chapterNo,
             checklist,
-            fileName: file.name,
-            fileSize: file.size,
+            fileName: scratchFiles.map((file) => file.name).join(" / "),
+            fileSize: scratchFiles.reduce((sum, file) => sum + file.size, 0),
           }),
         })
       );
@@ -806,7 +818,7 @@ export function CourseApp() {
                     submission={submissionMap.get(selected.no)}
                     earned={badgeMap.has(selected.no)}
                     checked={checked[selected.no] ?? []}
-                    analysis={scratchResults[selected.no]}
+                    analyses={scratchResults}
                     busy={busy}
                     submissionUrl={submissionUrlOf(studentClass)}
                     submissionLabel={submissionLabelOf(studentClass)}
@@ -1122,7 +1134,7 @@ function ChapterSubmit({
   submission,
   earned,
   checked,
-  analysis,
+  analyses,
   busy,
   submissionUrl,
   submissionLabel,
@@ -1134,7 +1146,7 @@ function ChapterSubmit({
   submission?: Submission;
   earned: boolean;
   checked: string[];
-  analysis?: ScratchAnalysis;
+  analyses: Record<string, ScratchAnalysis>;
   busy: boolean;
   submissionUrl: string;
   submissionLabel: string;
@@ -1167,21 +1179,39 @@ function ChapterSubmit({
       </div>
 
       <form className="submit-box" onSubmit={(event) => onSubmit(event, chapter.no)}>
-        {chapter.no <= 3 ? (
-          <div className="check-list check-list--automatic" aria-live="polite">
-            {chapter.checks.map((item) => {
-              const check = analysis?.checks.find((candidate) => candidate.id === item.id);
+        {chapter.submissionTasks ? (
+          <div className="submission-tasks">
+            {chapter.submissionTasks.map((task) => {
+              const taskChecks = chapter.checks.filter((check) => task.checkIds.includes(check.id));
+              const analysis = analyses[`${chapter.no}:${task.id}`];
               return (
-                <div key={item.id} className={check?.passed ? "checked" : check ? "needs-fix" : ""}>
-                  <span className="check-result">{check ? (check.passed ? "通過" : "待修正") : "等待檢核"}</span>
-                  <span>
-                    <strong>{item.label}</strong>
-                    {check && <small>{check.detail}</small>}
-                  </span>
-                </div>
+                <section className="submission-task" key={task.id}>
+                  <div className="submission-task__head">
+                    <div>
+                      <h4>{task.title}</h4>
+                      <strong>{task.videoTitle}</strong>
+                    </div>
+                    <span>{analysis ? (analysis.passedIds.length === task.checkIds.length ? "檢核通過" : "需要修正") : "尚未檢核"}</span>
+                  </div>
+                  <p>{task.description}</p>
+                  <AutomaticCheckList checks={taskChecks} analysis={analysis} />
+                  <label className="file-field">
+                    選擇這份 Scratch 作品
+                    <input name={`file-${task.id}`} type="file" accept=".sb3" required />
+                  </label>
+                </section>
               );
             })}
           </div>
+        ) : chapter.no <= 3 ? (
+          <>
+            <AutomaticCheckList checks={chapter.checks} analysis={analyses[`${chapter.no}:default`]} />
+            <label className="file-field">
+              選擇 Scratch 檔案進行檢核
+              <input name="file" type="file" accept=".sb3" required />
+              <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
+            </label>
+          </>
         ) : (
           <div className="check-list">
             {chapter.checks.map((item) => (
@@ -1196,19 +1226,22 @@ function ChapterSubmit({
             ))}
           </div>
         )}
-        <label className="file-field">
-          選擇 Scratch 檔案進行檢核
-          <input name="file" type="file" accept=".sb3" required />
-          <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
-        </label>
-        <button disabled={busy}>{chapter.no <= 3 ? "開始自動檢核" : "送出檢核"}</button>
+        {chapter.no > 3 && (
+          <label className="file-field">
+            選擇 Scratch 檔案進行檢核
+            <input name="file" type="file" accept=".sb3" required />
+            <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
+          </label>
+        )}
+        {chapter.submissionTasks && <small className="local-check-note">兩份檔案只在這台裝置上檢查，不會上傳到本網站。</small>}
+        <button disabled={busy}>{chapter.submissionTasks ? "檢核兩份作品" : chapter.no <= 3 ? "開始自動檢核" : "送出檢核"}</button>
       </form>
 
       {submission && submissionUrl && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
         <div className="external-submit">
           <div>
             <span>第二步</span>
-            <strong>將原始作品繳交給老師</strong>
+            <strong>{chapter.submissionTasks ? "將兩份原始作品繳交給老師" : "將原始作品繳交給老師"}</strong>
             <p>上傳完成後，回到這裡通知老師。</p>
           </div>
           <a href={submissionUrl} target="_blank" rel="noreferrer">{submissionLabel}</a>
@@ -1237,6 +1270,41 @@ function ChapterSubmit({
       )}
     </article>
   );
+}
+
+function AutomaticCheckList({
+  checks,
+  analysis,
+}: {
+  checks: { id: string; label: string }[];
+  analysis?: ScratchAnalysis;
+}) {
+  return (
+    <div className="check-list check-list--automatic" aria-live="polite">
+      {checks.map((item) => {
+        const check = analysis?.checks.find((candidate) => candidate.id === item.id);
+        return (
+          <div key={item.id} className={check?.passed ? "checked" : check ? "needs-fix" : ""}>
+            <span className="check-result">{check ? (check.passed ? "通過" : "待修正") : "等待檢核"}</span>
+            <span>
+              <strong>{item.label}</strong>
+              {check && <small>{check.detail}</small>}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function validateScratchFile(value: FormDataEntryValue | null) {
+  if (!(value instanceof File) || !value.name.toLowerCase().endsWith(".sb3")) {
+    throw new Error("請選擇 Scratch .sb3 檔案。");
+  }
+  if (value.size <= 0 || value.size > 20 * 1024 * 1024) {
+    throw new Error("每個檔案需小於 20MB。");
+  }
+  return value;
 }
 
 function TeacherRoster({

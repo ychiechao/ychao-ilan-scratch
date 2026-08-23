@@ -67,9 +67,12 @@ test("renders the chapter 3 sample-based checklist", async () => {
   const response = await render("/chapters/3");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /角色會先回到設定好的初始座標/);
+  assert.match(html, /滑行作品按下綠旗後/);
   assert.match(html, /至少四段滑行到指定位置/);
   assert.match(html, /每一段滑行時間都使用隨機取數積木/);
+  assert.match(html, /座標作品按下綠旗後/);
+  assert.match(html, /重複與改變 X／Y 座標積木/);
+  assert.match(html, /座標移動路線不會超出舞台/);
 });
 
 test("renders the verified videos for every chapter", async () => {
