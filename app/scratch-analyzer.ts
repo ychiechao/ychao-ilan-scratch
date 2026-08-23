@@ -87,6 +87,8 @@ export async function analyzeScratchFile(
   if (chapterNo === 3) {
     return task === "coordinates" ? analyzeChapterThreeCoordinates(sprites) : analyzeChapterThreeGlide(sprites);
   }
+  if (chapterNo === 4) return analyzeChapterFour(sprites);
+  if (chapterNo === 5) return analyzeChapterFive(sprites);
 
   return result([]);
 }
@@ -243,6 +245,111 @@ function analyzeChapterThreeCoordinates(sprites: ScratchTarget[]): ScratchAnalys
   ]);
 }
 
+function analyzeChapterFour(sprites: ScratchTarget[]): ScratchAnalysis {
+  let best: ScratchBlock[] = [];
+
+  for (const sprite of sprites) {
+    for (const block of Object.values(sprite.blocks)) {
+      if (block.opcode !== "event_whenflagclicked") continue;
+      const candidate = collectScriptBlocks(block.next, sprite.blocks);
+      if (controllerQuality(candidate, sprites) > controllerQuality(best, sprites)) best = candidate;
+    }
+  }
+
+  const opcodes = new Set(best.map((block) => block.opcode));
+  const keys = new Set(
+    best
+      .filter((block) => block.opcode === "sensing_keypressed")
+      .map((block) => keyName(block.inputs.KEY_OPTION, sprites))
+      .filter(Boolean),
+  );
+  const xChanges = best.filter((block) => block.opcode === "motion_changexby")
+    .map((block) => numberInputFromAnySprite(block.inputs.DX, sprites));
+  const yChanges = best.filter((block) => block.opcode === "motion_changeyby")
+    .map((block) => numberInputFromAnySprite(block.inputs.DY, sprites));
+  const initialized = opcodes.has("motion_gotoxy") && opcodes.has("motion_pointindirection");
+  const fourKeys = opcodes.has("control_forever") && ["right arrow", "left arrow", "up arrow", "down arrow"]
+    .every((key) => keys.has(key));
+  const fourDirections = xChanges.some((value) => value > 0) && xChanges.some((value) => value < 0)
+    && yChanges.some((value) => value > 0) && yChanges.some((value) => value < 0);
+
+  return result([
+    {
+      id: "controller-start",
+      passed: initialized,
+      detail: initialized
+        ? "綠旗程式有設定主角的初始位置與方向。"
+        : "請在綠旗程式中先設定主角的初始位置與方向。",
+    },
+    {
+      id: "controller-keys",
+      passed: fourKeys,
+      detail: fourKeys
+        ? "重複無限次會持續偵測四個方向鍵。"
+        : "請在重複無限次中加入上、下、左、右四個方向鍵判斷。",
+    },
+    {
+      id: "controller-motion",
+      passed: fourDirections,
+      detail: fourDirections
+        ? "X 與 Y 座標都有正向及反向移動設定。"
+        : "右／左鍵需增加／減少 X，上／下鍵需增加／減少 Y。",
+    },
+  ]);
+}
+
+function analyzeChapterFive(sprites: ScratchTarget[]): ScratchAnalysis {
+  let best: { blocks: ScratchBlock[]; blockMap: Record<string, ScratchBlock> } | null = null;
+
+  for (const sprite of sprites) {
+    for (const block of Object.values(sprite.blocks)) {
+      if (block.opcode !== "event_whenflagclicked") continue;
+      const candidate = collectScriptBlocks(block.next, sprite.blocks);
+      const currentGlides = candidate.filter((item) => item.opcode === "motion_glidesecstoxy").length;
+      const bestGlides = best?.blocks.filter((item) => item.opcode === "motion_glidesecstoxy").length ?? -1;
+      if (currentGlides > bestGlides) best = { blocks: candidate, blockMap: sprite.blocks };
+    }
+  }
+
+  const blocks = best?.blocks ?? [];
+  const opcodes = new Set(blocks.map((block) => block.opcode));
+  const glides = blocks.filter((block) => block.opcode === "motion_glidesecstoxy");
+  const destinations = glides.map((block) => ({
+    x: numberInput(block.inputs.X, best?.blockMap ?? {}, Number.NaN),
+    y: numberInput(block.inputs.Y, best?.blockMap ?? {}, Number.NaN),
+  }));
+  const distinctDestinations = new Set(destinations.map((point) => `${point.x},${point.y}`)).size;
+  const hasSupportingSprite = sprites.length >= 2 && glides.length >= 2;
+  const loopsMovement = opcodes.has("motion_gotoxy") && opcodes.has("control_forever")
+    && glides.length >= 2 && distinctDestinations >= 2 && staysOnStage(destinations);
+  const randomMovement = glides.length >= 2
+    && glides.every((block) => isRandomInput(block.inputs.SECS, best?.blockMap ?? {}));
+
+  return result([
+    {
+      id: "supporting-sprite",
+      passed: hasSupportingSprite,
+      detail: hasSupportingSprite
+        ? "作品中有主角與另一個會滑行的配角。"
+        : "請新增主角以外的配角，並替配角加入移動程式。",
+    },
+    {
+      id: "supporting-loop",
+      passed: loopsMovement,
+      detail: loopsMovement
+        ? "配角會先定位，再於重複無限次中來回滑行。"
+        : "配角需先定位，並在重複無限次中滑行到至少兩個不同位置。",
+    },
+    {
+      id: "supporting-random",
+      passed: randomMovement,
+      detail: randomMovement
+        ? "配角的每一段滑行時間都使用隨機取數。"
+        : "請把每一段滑行的秒數改成隨機取數。",
+    },
+  ]);
+}
+
 function runChain(
   startId: string | null,
   blocks: Record<string, ScratchBlock>,
@@ -320,6 +427,28 @@ function chainBlocks(startId: string | null, blocks: Record<string, ScratchBlock
   return found;
 }
 
+function collectScriptBlocks(startId: string | null, blocks: Record<string, ScratchBlock>) {
+  const found: ScratchBlock[] = [];
+  const visited = new Set<string>();
+
+  function visit(start: string | null) {
+    let id = start;
+    let guard = 0;
+    while (id && guard < 500 && !visited.has(id)) {
+      const block = blocks[id];
+      if (!block) break;
+      visited.add(id);
+      found.push(block);
+      Object.values(block.inputs).forEach((input) => visit(blockReference(input, blocks)));
+      id = block.next;
+      guard += 1;
+    }
+  }
+
+  visit(startId);
+  return found;
+}
+
 function numberInput(input: ScratchInput | undefined, blocks: Record<string, ScratchBlock>, fallback: number) {
   if (!Array.isArray(input)) return fallback;
   const value = input[1];
@@ -340,6 +469,24 @@ function blockReference(input: ScratchInput | undefined, blocks: Record<string, 
   if (!Array.isArray(input)) return null;
   const value = input[1];
   return typeof value === "string" && blocks[value] ? value : null;
+}
+
+function keyName(input: ScratchInput | undefined, sprites: ScratchTarget[]) {
+  for (const sprite of sprites) {
+    const id = blockReference(input, sprite.blocks);
+    if (!id) continue;
+    const field = sprite.blocks[id]?.fields?.KEY_OPTION;
+    if (Array.isArray(field) && typeof field[0] === "string") return field[0];
+  }
+  return "";
+}
+
+function numberInputFromAnySprite(input: ScratchInput | undefined, sprites: ScratchTarget[]) {
+  for (const sprite of sprites) {
+    const value = numberInput(input, sprite.blocks, Number.NaN);
+    if (Number.isFinite(value)) return value;
+  }
+  return Number.NaN;
 }
 
 function isRandomInput(input: ScratchInput | undefined, blocks: Record<string, ScratchBlock>) {
@@ -373,6 +520,14 @@ function motionQuality(state: MotionState) {
 
 function coordinateQuality(state: MotionState) {
   return state.points.length + (state.hasInitialPosition ? 1000 : 0) + state.coordinateAxes.size * 1000;
+}
+
+function controllerQuality(blocks: ScratchBlock[], sprites: ScratchTarget[]) {
+  const opcodes = new Set(blocks.map((block) => block.opcode));
+  const keyCount = blocks.filter((block) => block.opcode === "sensing_keypressed")
+    .map((block) => keyName(block.inputs.KEY_OPTION, sprites))
+    .filter(Boolean).length;
+  return keyCount * 100 + (opcodes.has("control_forever") ? 1000 : 0);
 }
 
 function pushPoint(state: MotionState) {

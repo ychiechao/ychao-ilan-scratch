@@ -75,6 +75,20 @@ test("renders the chapter 3 sample-based checklist", async () => {
   assert.match(html, /座標移動路線不會超出舞台/);
 });
 
+test("renders the sample-based chapter 4 and 5 checklists", async () => {
+  const controller = await render("/chapters/4");
+  assert.equal(controller.status, 200);
+  const controllerHtml = await controller.text();
+  assert.match(controllerHtml, /重複無限次中持續偵測上、下、左、右方向鍵/);
+  assert.match(controllerHtml, /增加或減少主角的 X／Y 座標/);
+
+  const supporting = await render("/chapters/5");
+  assert.equal(supporting.status, 200);
+  const supportingHtml = await supporting.text();
+  assert.match(supportingHtml, /至少有主角與一個會移動的配角/);
+  assert.match(supportingHtml, /配角每一段滑行時間都使用隨機取數積木/);
+});
+
 test("renders the verified videos for every chapter", async () => {
   const cases = [
     { path: "/chapters/1", videoIds: ["NSIGbZ9j3zY"] },

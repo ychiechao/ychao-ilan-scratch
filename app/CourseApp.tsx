@@ -286,7 +286,7 @@ export function CourseApp() {
           "3:coordinates": coordinates,
         }));
         setChecked((current) => ({ ...current, [chapterNo]: checklist }));
-      } else if (chapterNo <= 2) {
+      } else if (isAutomaticChapter(chapterNo)) {
         const analysis = await analyzeScratchFile(scratchFiles[0], chapterNo);
         checklist = analysis.passedIds;
         setScratchResults((current) => ({ ...current, [`${chapterNo}:default`]: analysis }));
@@ -1203,7 +1203,7 @@ function ChapterSubmit({
               );
             })}
           </div>
-        ) : chapter.no <= 3 ? (
+        ) : isAutomaticChapter(chapter.no) ? (
           <>
             <AutomaticCheckList checks={chapter.checks} analysis={analyses[`${chapter.no}:default`]} />
             <label className="file-field">
@@ -1226,7 +1226,7 @@ function ChapterSubmit({
             ))}
           </div>
         )}
-        {chapter.no > 3 && (
+        {chapter.no > 5 && (
           <label className="file-field">
             選擇 Scratch 檔案進行檢核
             <input name="file" type="file" accept=".sb3" required />
@@ -1234,7 +1234,7 @@ function ChapterSubmit({
           </label>
         )}
         {chapter.submissionTasks && <small className="local-check-note">兩份檔案只在這台裝置上檢查，不會上傳到本網站。</small>}
-        <button disabled={busy}>{chapter.submissionTasks ? "檢核兩份作品" : chapter.no <= 3 ? "開始自動檢核" : "送出檢核"}</button>
+        <button disabled={busy}>{chapter.submissionTasks ? "檢核兩份作品" : isAutomaticChapter(chapter.no) ? "開始自動檢核" : "送出檢核"}</button>
       </form>
 
       {submission && submissionUrl && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
@@ -1305,6 +1305,10 @@ function validateScratchFile(value: FormDataEntryValue | null) {
     throw new Error("每個檔案需小於 20MB。");
   }
   return value;
+}
+
+function isAutomaticChapter(chapterNo: number) {
+  return chapterNo === 1 || chapterNo === 2 || chapterNo === 4 || chapterNo === 5;
 }
 
 function TeacherRoster({

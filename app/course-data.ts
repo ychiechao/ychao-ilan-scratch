@@ -109,9 +109,9 @@ export const chapters: Chapter[] = [
     videoIds: ["Ljh-5RNk0Uk"],
     videoTitles: ["05 遊戲設計主角控制技巧：精確控制"],
     checks: [
-      { id: "keyboard", label: "我的作品有鍵盤控制主角移動。" },
-      { id: "smooth-control", label: "主角移動速度適中，容易操作。" },
-      { id: "boundary", label: "我有處理角色靠近舞台邊緣的狀況。" },
+      { id: "controller-start", label: "按下綠旗後，主角會回到設定好的初始位置與方向。" },
+      { id: "controller-keys", label: "在重複無限次中持續偵測上、下、左、右方向鍵。" },
+      { id: "controller-motion", label: "四個方向鍵會正確增加或減少主角的 X／Y 座標。" },
     ],
   },
   {
@@ -126,9 +126,9 @@ export const chapters: Chapter[] = [
     videoIds: ["QPD05s8Kc8w"],
     videoTitles: ["06 遊戲設計配角的移動技巧：簡易移動"],
     checks: [
-      { id: "second-sprite", label: "我的作品至少有主角與配角。" },
-      { id: "enemy-motion", label: "配角會自動移動或改變位置。" },
-      { id: "randomness", label: "我有加入隨機或重複行為，讓遊戲不只執行一次。" },
+      { id: "supporting-sprite", label: "作品至少有主角與一個會移動的配角。" },
+      { id: "supporting-loop", label: "配角按下綠旗後會定位，並在重複無限次中來回滑行。" },
+      { id: "supporting-random", label: "配角每一段滑行時間都使用隨機取數積木。" },
     ],
   },
   {
