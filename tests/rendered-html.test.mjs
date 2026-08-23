@@ -63,6 +63,15 @@ test("renders the revised chapter 2 checklist", async () => {
   assert.match(html, /不會超出舞台範圍/);
 });
 
+test("renders the chapter 3 sample-based checklist", async () => {
+  const response = await render("/chapters/3");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /角色會先回到設定好的初始座標/);
+  assert.match(html, /至少四段滑行到指定位置/);
+  assert.match(html, /每一段滑行時間都使用隨機取數積木/);
+});
+
 test("renders the verified videos for every chapter", async () => {
   const cases = [
     { path: "/chapters/1", videoIds: ["NSIGbZ9j3zY"] },

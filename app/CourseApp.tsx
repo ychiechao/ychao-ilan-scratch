@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
+import { analyzeScratchFile, type ScratchAnalysis } from "./scratch-analyzer";
 
 type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
 
@@ -174,6 +175,7 @@ export function CourseApp() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [checked, setChecked] = useState<Record<number, string[]>>({});
+  const [scratchResults, setScratchResults] = useState<Record<number, ScratchAnalysis>>({});
   const [selectedChapter, setSelectedChapter] = useState(initialChapter);
 
   const earnedCount = badges.length;
@@ -272,14 +274,24 @@ export function CourseApp() {
       if (signature[0] !== 0x50 || signature[1] !== 0x4b) {
         throw new Error("這個檔案不像有效的 Scratch 作品，請從 Scratch 重新儲存。");
       }
-      const data = await readJson<{ submissions: Submission[]; badges: Badge[]; submission: { status: string; badge: string | null } }>(
+      const analysis = chapterNo <= 3 ? await analyzeScratchFile(file, chapterNo) : null;
+      const checklist = analysis?.passedIds ?? checked[chapterNo] ?? [];
+      if (analysis) {
+        setScratchResults((current) => ({ ...current, [chapterNo]: analysis }));
+        setChecked((current) => ({ ...current, [chapterNo]: analysis.passedIds }));
+      }
+      const data = await readJson<{
+        submissions: Submission[];
+        badges: Badge[];
+        submission: { status: string; score: number; missing: string[] };
+      }>(
         await fetch("/api/submissions", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             studentId: student.id,
             chapterNo,
-            checklist: checked[chapterNo] ?? [],
+            checklist,
             fileName: file.name,
             fileSize: file.size,
           }),
@@ -293,7 +305,9 @@ export function CourseApp() {
           ? "檢核通過，已取得本章徽章。"
           : data.submission.status === "ready_to_upload"
             ? "自我檢核通過，接著請到老師指定的雲端空間繳交。"
-            : "還有檢核項目需要修正。"
+            : data.submission.missing.length > 0
+              ? `還有 ${data.submission.missing.length} 項需要修正，請查看下方檢核結果。`
+              : "還有檢核項目需要修正。"
       );
       if (teacher && selectedClassId) refreshDashboard(selectedClassId);
     } catch (error) {
@@ -642,6 +656,7 @@ export function CourseApp() {
     setStudentClass(null);
     setSubmissions([]);
     setBadges([]);
+    setScratchResults({});
   }
 
   function logoutTeacher() {
@@ -791,6 +806,7 @@ export function CourseApp() {
                     submission={submissionMap.get(selected.no)}
                     earned={badgeMap.has(selected.no)}
                     checked={checked[selected.no] ?? []}
+                    analysis={scratchResults[selected.no]}
                     busy={busy}
                     submissionUrl={submissionUrlOf(studentClass)}
                     submissionLabel={submissionLabelOf(studentClass)}
@@ -1106,6 +1122,7 @@ function ChapterSubmit({
   submission,
   earned,
   checked,
+  analysis,
   busy,
   submissionUrl,
   submissionLabel,
@@ -1117,6 +1134,7 @@ function ChapterSubmit({
   submission?: Submission;
   earned: boolean;
   checked: string[];
+  analysis?: ScratchAnalysis;
   busy: boolean;
   submissionUrl: string;
   submissionLabel: string;
@@ -1149,24 +1167,41 @@ function ChapterSubmit({
       </div>
 
       <form className="submit-box" onSubmit={(event) => onSubmit(event, chapter.no)}>
-        <div className="check-list">
-          {chapter.checks.map((item) => (
-            <label key={item.id} className={checked.includes(item.id) ? "checked" : ""}>
-              <input
-                type="checkbox"
-                checked={checked.includes(item.id)}
-                onChange={() => onToggle(chapter.no, item.id)}
-              />
-              <span>{item.label}</span>
-            </label>
-          ))}
-        </div>
+        {chapter.no <= 3 ? (
+          <div className="check-list check-list--automatic" aria-live="polite">
+            {chapter.checks.map((item) => {
+              const check = analysis?.checks.find((candidate) => candidate.id === item.id);
+              return (
+                <div key={item.id} className={check?.passed ? "checked" : check ? "needs-fix" : ""}>
+                  <span className="check-result">{check ? (check.passed ? "通過" : "待修正") : "等待檢核"}</span>
+                  <span>
+                    <strong>{item.label}</strong>
+                    {check && <small>{check.detail}</small>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="check-list">
+            {chapter.checks.map((item) => (
+              <label key={item.id} className={checked.includes(item.id) ? "checked" : ""}>
+                <input
+                  type="checkbox"
+                  checked={checked.includes(item.id)}
+                  onChange={() => onToggle(chapter.no, item.id)}
+                />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
         <label className="file-field">
           選擇 Scratch 檔案進行檢核
           <input name="file" type="file" accept=".sb3" required />
           <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
         </label>
-        <button disabled={busy}>送出檢核</button>
+        <button disabled={busy}>{chapter.no <= 3 ? "開始自動檢核" : "送出檢核"}</button>
       </form>
 
       {submission && submissionUrl && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (

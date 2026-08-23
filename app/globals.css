@@ -531,6 +531,58 @@ select:focus {
   border-color: var(--green);
 }
 
+.check-list--automatic > div {
+  align-items: start;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 78px minmax(0, 1fr);
+  line-height: 1.5;
+  padding: 12px;
+}
+
+.check-list--automatic > div.checked {
+  background: #f2faf5;
+  border-color: var(--green);
+}
+
+.check-list--automatic > div.needs-fix {
+  background: #fff8f4;
+  border-color: #df8a67;
+}
+
+.check-result {
+  background: #edf1ee;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 5px 7px;
+  text-align: center;
+}
+
+.checked .check-result {
+  background: #d8f0df;
+  color: #176348;
+}
+
+.needs-fix .check-result {
+  background: #f7ded2;
+  color: #883d27;
+}
+
+.check-list--automatic strong,
+.check-list--automatic small {
+  display: block;
+}
+
+.check-list--automatic small {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
 .check-list input {
   height: 18px;
   margin-top: 3px;

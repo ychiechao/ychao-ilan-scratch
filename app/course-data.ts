@@ -66,9 +66,9 @@ export const chapters: Chapter[] = [
     videoIds: ["Jvpr-2X5EJs", "HYsreADflfs"],
     videoTitles: ["03 Scratch 角色移動：滑行", "04 Scratch 角色的移動：XY 座標"],
     checks: [
-      { id: "xy", label: "我知道 X 座標與 Y 座標如何影響角色位置。" },
-      { id: "glide", label: "我有使用滑行或定位到座標的效果。" },
-      { id: "repeat-test", label: "我重複測試不同座標，角色位置符合預期。" },
+      { id: "xy", label: "按下綠旗後，角色會先回到設定好的初始座標。" },
+      { id: "glide", label: "使用至少四段滑行到指定位置，讓角色繞舞台一圈。" },
+      { id: "repeat-test", label: "每一段滑行時間都使用隨機取數積木。" },
     ],
   },
   {
