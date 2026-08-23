@@ -55,13 +55,28 @@ main {
 .hero {
   align-items: stretch;
   background:
-    radial-gradient(circle at 84% 20%, rgba(216, 169, 40, 0.2), transparent 28%),
-    linear-gradient(135deg, #e8f2ea 0%, #f7f2dc 52%, #e2eef6 100%);
-  border-bottom: 1px solid var(--line);
+    linear-gradient(90deg, rgba(245, 252, 249, 0.98) 0%, rgba(245, 252, 249, 0.94) 30%, rgba(245, 252, 249, 0.7) 49%, rgba(245, 252, 249, 0.16) 72%, rgba(245, 252, 249, 0.04) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 62%, rgba(8, 65, 78, 0.18) 100%),
+    url("/yilan-guishan-scratch-banner.webp");
+  background-position: center, center, 56% center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.72);
   display: grid;
   gap: 28px;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
-  padding: 48px clamp(20px, 5vw, 72px) 34px;
+  isolation: isolate;
+  min-height: 520px;
+  overflow: hidden;
+  padding: 72px clamp(20px, 5vw, 72px) 50px;
+  position: relative;
+}
+
+.hero__content {
+  align-self: center;
+  max-width: 760px;
+  position: relative;
+  z-index: 1;
 }
 
 .hero__content h1 {
@@ -73,11 +88,11 @@ main {
 }
 
 .hero__copy {
-  color: #3e514a;
+  color: #30483f;
   font-size: 1.12rem;
   line-height: 1.75;
   margin: 0;
-  max-width: 740px;
+  max-width: 680px;
 }
 
 .eyebrow {
@@ -110,7 +125,9 @@ main {
 }
 
 .hero__actions button {
-  background: rgba(16, 35, 29, 0.1);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(16, 35, 29, 0.15);
   color: var(--ink);
 }
 
@@ -122,21 +139,29 @@ main {
 .hero__board {
   align-content: stretch;
   display: grid;
-  gap: 12px;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  max-width: 430px;
+  position: absolute;
+  right: clamp(20px, 5vw, 72px);
+  top: 24px;
+  z-index: 2;
 }
 
 .hero__board div {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.94);
   border-radius: 8px;
   box-shadow: var(--shadow);
   display: grid;
-  padding: 20px;
+  min-width: 0;
+  padding: 12px 14px;
 }
 
 .hero__board span {
   color: var(--blue);
-  font-size: 2.2rem;
+  font-size: 1.5rem;
   font-weight: 900;
 }
 
@@ -1035,6 +1060,22 @@ td:first-child span {
     position: static;
   }
 
+  .hero {
+    background-position: center, center, 66% center;
+    min-height: 600px;
+  }
+
+  .hero__content {
+    max-width: 650px;
+  }
+
+  .hero__board {
+    align-self: end;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: none;
+    position: static;
+  }
+
   .course-grid,
   .badge-wall,
   .form-grid,
@@ -1047,7 +1088,36 @@ td:first-child span {
 
 @media (max-width: 640px) {
   .hero {
-    padding-top: 30px;
+    background:
+      linear-gradient(180deg, rgba(245, 252, 249, 0.95) 0%, rgba(245, 252, 249, 0.87) 49%, rgba(245, 252, 249, 0.48) 72%, rgba(8, 65, 78, 0.22) 100%),
+      url("/yilan-guishan-scratch-banner.webp");
+    background-position: center, 68% center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    min-height: 680px;
+    padding-bottom: 26px;
+    padding-top: 38px;
+  }
+
+  .hero__content h1 {
+    font-size: 2.65rem;
+  }
+
+  .hero__copy {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .hero__board {
+    gap: 6px;
+  }
+
+  .hero__board div {
+    padding: 10px;
+  }
+
+  .hero__board span {
+    font-size: 1.2rem;
   }
 
   .chapter-panel__head,
