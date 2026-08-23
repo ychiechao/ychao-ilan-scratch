@@ -39,7 +39,8 @@ type Dashboard = {
   badges: Badge[];
 };
 
-type Notice = { type: "success" | "error" | "info"; text: string } | null;
+type NoticeType = "success" | "error" | "info";
+type Notice = { type: NoticeType; text: string } | null;
 
 const emptyDashboard: Dashboard = {
   class: null,
@@ -82,9 +83,16 @@ function initialChapter() {
 }
 
 async function readJson<T>(response: Response): Promise<T> {
-  const data = await response.json().catch(() => ({}));
+  const data: unknown = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || "操作失敗，請稍後再試。");
+    const message =
+      typeof data === "object" &&
+      data !== null &&
+      "error" in data &&
+      typeof data.error === "string"
+        ? data.error
+        : "操作失敗，請稍後再試。";
+    throw new Error(message);
   }
   return data as T;
 }
@@ -132,7 +140,7 @@ export function CourseApp() {
     return map;
   }, [badges]);
 
-  function show(type: Notice["type"], text: string) {
+  function show(type: NoticeType, text: string) {
     setNotice({ type, text });
   }
 

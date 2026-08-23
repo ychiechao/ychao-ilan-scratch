@@ -10,8 +10,9 @@
     "build": "vinext build",
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern work --ignore-pattern outputs --ignore-pattern .wrangler",
-    "db:generate": "drizzle-kit generate"
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern work --ignore-pattern outputs --ignore-pattern .wrangler --ignore-pattern worker-configuration.d.ts",
+    "db:generate": "drizzle-kit generate",
+    "deploy:cloudflare": "vinext-cloudflare deploy"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -27,6 +28,7 @@
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@vinext/cloudflare": "1.0.0-beta.2",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
     "drizzle-kit": "0.31.10",
@@ -41,7 +43,7 @@
     "typescript-eslint": "8.59.3",
     "vinext": "1.0.0-beta.2",
     "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "wrangler": "^4.125.0"
   },
   "type": "module"
 }
