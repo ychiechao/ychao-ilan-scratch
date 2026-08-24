@@ -2,8 +2,10 @@ import {
   cleanText,
   createId,
   hashPin,
+  isValidEmail,
   jsonError,
   normalizeClassCode,
+  normalizeEmail,
   publicClass,
   publicStudent,
 } from "../../_lib";
@@ -14,16 +16,18 @@ export async function POST(request: Request) {
     classCode?: string;
     seatNo?: string;
     nickname?: string;
+    email?: string;
     pin?: string;
   } | null;
 
   const classCode = normalizeClassCode(cleanText(payload?.classCode, 20));
   const seatNo = cleanText(payload?.seatNo, 10);
   const nickname = cleanText(payload?.nickname, 40);
+  const email = normalizeEmail(payload?.email);
   const pin = cleanText(payload?.pin, 12);
 
-  if (!classCode || !seatNo || !nickname || pin.length < 4) {
-    return jsonError("請輸入班級代碼、座號、暱稱與至少 4 碼 PIN。");
+  if (!classCode || !seatNo || !nickname || !isValidEmail(email) || pin.length < 4) {
+    return jsonError("請輸入班級代碼、座號、暱稱、正確的 Email 與至少 4 碼 PIN。");
   }
 
   const db = await ensureDb();
@@ -53,9 +57,17 @@ export async function POST(request: Request) {
       return jsonError("這個座號已加入班級，PIN 不正確。", 401);
     }
 
+    const emailOwner = await db
+      .prepare("SELECT id FROM students WHERE email = ? AND id <> ?")
+      .bind(email, student.id)
+      .first();
+    if (emailOwner) {
+      return jsonError("這個 Email 已經綁定其他學生帳號。", 409);
+    }
+
     await db
-      .prepare("UPDATE students SET nickname = ? WHERE id = ?")
-      .bind(nickname, student.id)
+      .prepare("UPDATE students SET nickname = ?, email = ? WHERE id = ?")
+      .bind(nickname, email, student.id)
       .run();
     const updated = await db
       .prepare("SELECT * FROM students WHERE id = ?")
@@ -69,12 +81,16 @@ export async function POST(request: Request) {
   }
 
   const studentId = createId("stu");
-  await db
-    .prepare(
-      "INSERT INTO students (id, class_id, seat_no, nickname, pin_hash) VALUES (?, ?, ?, ?, ?)"
-    )
-    .bind(studentId, (classRow as { id: string }).id, seatNo, nickname, pinHash)
-    .run();
+  try {
+    await db
+      .prepare(
+        "INSERT INTO students (id, class_id, seat_no, nickname, email, pin_hash) VALUES (?, ?, ?, ?, ?, ?)"
+      )
+      .bind(studentId, (classRow as { id: string }).id, seatNo, nickname, email, pinHash)
+      .run();
+  } catch {
+    return jsonError("這個 Email 已經綁定其他學生帳號。", 409);
+  }
 
   const student = await db
     .prepare("SELECT * FROM students WHERE id = ?")

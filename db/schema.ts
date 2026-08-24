@@ -33,10 +33,12 @@ export const students = sqliteTable("students", {
   classId: text("class_id").notNull().references(() => classes.id),
   seatNo: text("seat_no").notNull(),
   nickname: text("nickname").notNull(),
+  email: text("email"),
   pinHash: text("pin_hash").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("students_class_seat_idx").on(table.classId, table.seatNo),
+  uniqueIndex("students_email_idx").on(table.email),
 ]);
 
 export const submissions = sqliteTable("submissions", {

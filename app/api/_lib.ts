@@ -18,6 +18,7 @@ export type StudentRow = {
   class_id: string;
   seat_no: string;
   nickname: string;
+  email?: string | null;
   pin_hash: string;
   created_at: string;
 };
@@ -32,6 +33,14 @@ export function normalizeClassCode(value: string) {
 
 export function cleanText(value: unknown, maxLength = 80) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+export function normalizeEmail(value: unknown) {
+  return cleanText(value, 120).toLowerCase();
+}
+
+export function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export function createId(prefix: string) {
@@ -90,6 +99,7 @@ export function publicStudent(row: StudentRow) {
     classId: row.class_id,
     seatNo: row.seat_no,
     nickname: row.nickname,
+    email: row.email ?? "",
     createdAt: row.created_at,
   };
 }

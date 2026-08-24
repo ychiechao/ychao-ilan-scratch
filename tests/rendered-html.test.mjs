@@ -30,6 +30,10 @@ test("server-renders the course platform shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>宜蘭 Scratch 基礎課程<\/title>/i);
   assert.match(html, /學生入口/);
+  assert.match(html, /已加入學生登入/);
+  assert.match(html, /第一次加入班級/);
+  assert.match(html, /登入課程/);
+  assert.match(html, /<input(?=[^>]*name="email")(?=[^>]*type="email")[^>]*>/);
   assert.match(html, /老師後台/);
   assert.match(html, /課程地圖/);
   assert.match(html, /aria-label="回到課程地圖"[^>]*>\s*宜蘭 Scratch 基礎課程/);

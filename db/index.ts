@@ -48,6 +48,7 @@ const createStatements = [
     class_id TEXT NOT NULL,
     seat_no TEXT NOT NULL,
     nickname TEXT NOT NULL,
+    email TEXT,
     pin_hash TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id),
@@ -100,6 +101,11 @@ const createStatements = [
 export async function ensureDb() {
   const db = getD1();
   await db.batch(createStatements.map((statement) => db.prepare(statement)));
+  const studentColumns = await db.prepare("PRAGMA table_info(students)").all<{ name: string }>();
+  if (!(studentColumns.results ?? []).some((column) => column.name === "email")) {
+    await db.prepare("ALTER TABLE students ADD email TEXT").run();
+  }
+  await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS students_email_idx ON students (email)").run();
   const chapterSwap = await db
     .prepare("SELECT id FROM app_migrations WHERE id = 'swap-chapters-10-11'")
     .first();

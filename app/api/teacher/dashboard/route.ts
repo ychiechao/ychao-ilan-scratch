@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   const students = await db
     .prepare(
-      `SELECT id, class_id, seat_no, nickname, created_at
+      `SELECT id, class_id, seat_no, nickname, email, created_at
        FROM students
        WHERE class_id = ?
        ORDER BY CAST(seat_no AS INTEGER), seat_no`

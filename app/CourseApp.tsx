@@ -28,7 +28,15 @@ type ClassInfo = {
   status?: string;
   createdAt?: string;
 };
-type Student = { id: string; classId?: string; class_id?: string; seatNo?: string; seat_no?: string; nickname: string };
+type Student = {
+  id: string;
+  classId?: string;
+  class_id?: string;
+  seatNo?: string;
+  seat_no?: string;
+  nickname: string;
+  email?: string;
+};
 type Submission = {
   id: string;
   student_id?: string;
@@ -172,6 +180,7 @@ export function CourseApp() {
   const [dashboard, setDashboard] = useState<Dashboard>(emptyDashboard);
   const [student, setStudent] = useState<Student | null>(() => readStored("scratch-student"));
   const [studentClass, setStudentClass] = useState<ClassInfo | null>(() => readStored("scratch-student-class"));
+  const [studentAccessMode, setStudentAccessMode] = useState<"login" | "join">("login");
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [checked, setChecked] = useState<Record<number, string[]>>({});
@@ -239,6 +248,7 @@ export function CourseApp() {
             classCode: form.get("classCode"),
             seatNo: form.get("seatNo"),
             nickname: form.get("nickname"),
+            email: form.get("email"),
             pin: form.get("pin"),
           }),
         })
@@ -251,6 +261,31 @@ export function CourseApp() {
       show("success", "已加入班級，可以開始上傳章節作品。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "加入班級失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loginStudent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      const data = await readJson<{ student: Student; class: ClassInfo }>(
+        await fetch("/api/student/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+        })
+      );
+      setStudent(data.student);
+      setStudentClass(data.class);
+      localStorage.setItem("scratch-student", JSON.stringify(data.student));
+      localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
+      await refreshStudent(data.student.id);
+      show("success", "登入成功，已載入你的課程進度。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "學生登入失敗。");
     } finally {
       setBusy(false);
     }
@@ -617,6 +652,7 @@ export function CourseApp() {
             studentId,
             seatNo: form.get("seatNo"),
             nickname: form.get("nickname"),
+            email: form.get("email"),
             pin: form.get("pin"),
           }),
         })
@@ -779,25 +815,67 @@ export function CourseApp() {
               </div>
 
               {!student ? (
-                <form className="form-grid" onSubmit={joinStudent}>
-                  <label>
-                    班級代碼
-                    <input name="classCode" placeholder="YL-ABCDE" autoComplete="off" />
-                  </label>
-                  <label>
-                    座號
-                    <input name="seatNo" placeholder="例如 08" autoComplete="off" />
-                  </label>
-                  <label>
-                    暱稱
-                    <input name="nickname" placeholder="例如 小宜" autoComplete="nickname" />
-                  </label>
-                  <label>
-                    學習 PIN
-                    <input name="pin" type="password" minLength={4} placeholder="4 碼以上" />
-                  </label>
-                  <button disabled={busy}>加入班級</button>
-                </form>
+                <div className="student-access">
+                  <div className="student-access__tabs" aria-label="學生登入方式">
+                    <button
+                      type="button"
+                      className={studentAccessMode === "login" ? "active" : ""}
+                      aria-pressed={studentAccessMode === "login"}
+                      onClick={() => setStudentAccessMode("login")}
+                    >
+                      已加入學生登入
+                    </button>
+                    <button
+                      type="button"
+                      className={studentAccessMode === "join" ? "active" : ""}
+                      aria-pressed={studentAccessMode === "join"}
+                      onClick={() => setStudentAccessMode("join")}
+                    >
+                      第一次加入班級
+                    </button>
+                  </div>
+
+                  {studentAccessMode === "login" ? (
+                    <form className="form-grid student-login-form" onSubmit={loginStudent}>
+                      <label>
+                        Email
+                        <input name="email" type="email" placeholder="student@example.com" autoComplete="email" required />
+                      </label>
+                      <label>
+                        學習 PIN
+                        <input name="pin" type="password" minLength={4} maxLength={12} placeholder="4 碼以上" autoComplete="current-password" required />
+                      </label>
+                      <button disabled={busy}>登入課程</button>
+                    </form>
+                  ) : (
+                    <form className="form-grid student-join-form" onSubmit={joinStudent}>
+                      <label>
+                        班級代碼
+                        <input name="classCode" placeholder="YL-ABCDE" autoComplete="off" required />
+                      </label>
+                      <label>
+                        座號
+                        <input name="seatNo" placeholder="例如 08" autoComplete="off" required />
+                      </label>
+                      <label>
+                        暱稱
+                        <input name="nickname" placeholder="例如 小宜" autoComplete="nickname" required />
+                      </label>
+                      <label>
+                        Email
+                        <input name="email" type="email" placeholder="student@example.com" autoComplete="email" required />
+                      </label>
+                      <label>
+                        學習 PIN
+                        <input name="pin" type="password" minLength={4} maxLength={12} placeholder="4 碼以上" autoComplete="new-password" required />
+                      </label>
+                      <button disabled={busy}>加入班級</button>
+                    </form>
+                  )}
+                  <p className="student-access__note">
+                    舊帳號若尚未設定 Email，請用「第一次加入班級」輸入原本的班級、座號與 PIN，即可補上 Email。
+                  </p>
+                </div>
               ) : (
                 <>
                   <div className="student-strip">
@@ -1334,6 +1412,7 @@ function TeacherRoster({
       <form className="roster-add" onSubmit={(event) => onSave(event)}>
         <input name="seatNo" placeholder="座號" required />
         <input name="nickname" placeholder="暱稱" required />
+        <input name="email" type="email" placeholder="學生 Email" required />
         <input name="pin" type="password" minLength={4} placeholder="初始 PIN" required />
         <button disabled={busy}>新增學生</button>
       </form>
@@ -1343,6 +1422,7 @@ function TeacherRoster({
           <form key={item.id} className="roster-row" onSubmit={(event) => onSave(event, item.id)}>
             <input name="seatNo" defaultValue={seatOf(item)} aria-label={`${item.nickname}座號`} required />
             <input name="nickname" defaultValue={item.nickname} aria-label="暱稱" required />
+            <input name="email" type="email" defaultValue={item.email ?? ""} placeholder="學生 Email" aria-label="學生 Email" required />
             <input name="pin" type="password" minLength={4} placeholder="設定新 PIN" aria-label="新 PIN" required />
             <button disabled={busy}>儲存</button>
             <button type="button" className="danger" disabled={busy} onClick={() => onRemove(item)}>剔除</button>
