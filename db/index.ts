@@ -86,6 +86,10 @@ const createStatements = [
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES teachers(id)
   )`,
+  `CREATE TABLE IF NOT EXISTS app_migrations (
+    id TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
   `CREATE INDEX IF NOT EXISTS classes_teacher_idx ON classes (teacher_id)`,
   `CREATE INDEX IF NOT EXISTS students_class_idx ON students (class_id)`,
   `CREATE INDEX IF NOT EXISTS submissions_student_idx ON submissions (student_id)`,
@@ -96,5 +100,21 @@ const createStatements = [
 export async function ensureDb() {
   const db = getD1();
   await db.batch(createStatements.map((statement) => db.prepare(statement)));
+  const chapterSwap = await db
+    .prepare("SELECT id FROM app_migrations WHERE id = 'swap-chapters-10-11'")
+    .first();
+  if (!chapterSwap) {
+    await db.batch([
+      db.prepare("UPDATE submissions SET chapter_no = 110 WHERE chapter_no = 10"),
+      db.prepare("UPDATE submissions SET chapter_no = 10 WHERE chapter_no = 11"),
+      db.prepare("UPDATE submissions SET chapter_no = 11 WHERE chapter_no = 110"),
+      db.prepare("UPDATE badges SET chapter_no = 110 WHERE chapter_no = 10"),
+      db.prepare("UPDATE badges SET chapter_no = 10 WHERE chapter_no = 11"),
+      db.prepare("UPDATE badges SET chapter_no = 11 WHERE chapter_no = 110"),
+      db.prepare("UPDATE badges SET badge_name = '遊戲裁判' WHERE chapter_no = 10"),
+      db.prepare("UPDATE badges SET badge_name = '時間挑戰者' WHERE chapter_no = 11"),
+      db.prepare("INSERT INTO app_migrations (id) VALUES ('swap-chapters-10-11')"),
+    ]);
+  }
   return db;
 }
