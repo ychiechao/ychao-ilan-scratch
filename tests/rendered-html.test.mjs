@@ -89,6 +89,35 @@ test("renders the sample-based chapter 4 and 5 checklists", async () => {
   assert.match(supportingHtml, /配角每一段滑行時間都使用隨機取數積木/);
 });
 
+test("renders the sample-based chapter 6 through 9 checklists", async () => {
+  const cases = [
+    { chapter: 6, text: "按下空白鍵後，子彈會移到主角位置" },
+    { chapter: 7, text: "配角子彈會重複移到配角位置" },
+    { chapter: 8, text: "等待隨機時間後建立分身" },
+    { chapter: 9, text: "攻擊碰到敵人後" },
+  ];
+  for (const item of cases) {
+    const response = await render(`/chapters/${item.chapter}`);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), new RegExp(item.text));
+  }
+});
+
+test("renders win and lose in chapter 10 and timer in chapter 11", async () => {
+  const winLose = await render("/chapters/10");
+  assert.equal(winLose.status, 200);
+  const winLoseHtml = await winLose.text();
+  assert.match(winLoseHtml, /勝負判斷：使用廣播/);
+  assert.match(winLoseHtml, /勝負判斷：不使用廣播/);
+  assert.match(winLoseHtml, /送出並接收 WIN／LOSE/);
+
+  const timer = await render("/chapters/11");
+  assert.equal(timer.status, 200);
+  const timerHtml = await timer.text();
+  assert.match(timerHtml, /遊戲時間設定為大於零/);
+  assert.match(timerHtml, /每秒將時間減少一/);
+});
+
 test("renders the verified videos for every chapter", async () => {
   const cases = [
     { path: "/chapters/1", videoIds: ["NSIGbZ9j3zY"] },
@@ -100,8 +129,8 @@ test("renders the verified videos for every chapter", async () => {
     { path: "/chapters/7", videoIds: ["K7AhE9D2yJg"] },
     { path: "/chapters/8", videoIds: ["NeOBcpvmAuw"] },
     { path: "/chapters/9", videoIds: ["RHICqwxNtWY"] },
-    { path: "/chapters/10", videoIds: ["F0DISm_jCxw"] },
-    { path: "/chapters/11", videoIds: ["kafiqqrHbQM", "DOsK2b0b5rQ"] },
+    { path: "/chapters/10", videoIds: ["kafiqqrHbQM", "DOsK2b0b5rQ"] },
+    { path: "/chapters/11", videoIds: ["F0DISm_jCxw"] },
     { path: "/chapters/12", videoIds: ["7tiS3n6N4_c"] },
   ];
 

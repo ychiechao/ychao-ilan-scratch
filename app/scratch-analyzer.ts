@@ -43,7 +43,7 @@ type MotionState = {
   hasInitialPosition: boolean;
 };
 
-export type ScratchTask = "default" | "glide" | "coordinates";
+export type ScratchTask = "default" | "glide" | "coordinates" | "broadcast" | "direct";
 
 const STAGE_X = 240;
 const STAGE_Y = 180;
@@ -75,7 +75,8 @@ export async function analyzeScratchFile(
     throw new Error("Scratch 專案資料不完整，請重新下載作品。");
   }
 
-  const sprites = (project.targets ?? []).filter((target) => !target.isStage && target.blocks);
+  const targets = (project.targets ?? []).filter((target) => target.blocks);
+  const sprites = targets.filter((target) => !target.isStage);
   if (sprites.length === 0) {
     throw new Error("作品中找不到可檢核的角色。");
   }
@@ -89,6 +90,14 @@ export async function analyzeScratchFile(
   }
   if (chapterNo === 4) return analyzeChapterFour(sprites);
   if (chapterNo === 5) return analyzeChapterFive(sprites);
+  if (chapterNo === 6) return analyzeChapterSix(targets);
+  if (chapterNo === 7) return analyzeChapterSeven(targets);
+  if (chapterNo === 8) return analyzeChapterEight(targets);
+  if (chapterNo === 9) return analyzeChapterNine(targets);
+  if (chapterNo === 10) {
+    return task === "direct" ? analyzeChapterTenDirect(targets) : analyzeChapterTenBroadcast(targets);
+  }
+  if (chapterNo === 11) return analyzeChapterEleven(targets);
 
   return result([]);
 }
@@ -350,6 +359,228 @@ function analyzeChapterFive(sprites: ScratchTarget[]): ScratchAnalysis {
   ]);
 }
 
+function analyzeChapterSix(targets: ScratchTarget[]): ScratchAnalysis {
+  const projectile = targets.find((target) => Object.values(target.blocks).some((block) => (
+    block.topLevel && block.opcode === "event_whenkeypressed" && fieldText(block, "KEY_OPTION") === "space"
+  )));
+  const keyScript = projectile
+    ? topScript(projectile, "event_whenkeypressed", (block) => fieldText(block, "KEY_OPTION") === "space")
+    : [];
+  const flagScript = projectile ? topScript(projectile, "event_whenflagclicked") : [];
+  const keyOpcodes = new Set(keyScript.map((block) => block.opcode));
+  const projectileReady = Boolean(projectile && targets.filter((target) => !target.isStage).length >= 3
+    && flagScript.some((block) => block.opcode === "looks_hide"));
+  const launch = keyOpcodes.has("motion_goto") && keyOpcodes.has("looks_show");
+  const flight = keyOpcodes.has("control_repeat_until") && keyOpcodes.has("motion_changexby")
+    && keyScript.filter((block) => block.opcode === "sensing_touchingobject").length >= 2
+    && keyOpcodes.has("looks_hide");
+
+  return result([
+    {
+      id: "player-projectile",
+      passed: projectileReady,
+      detail: projectileReady ? "作品有獨立子彈角色，綠旗開始時會隱藏。" : "請建立獨立子彈角色，並在綠旗開始時隱藏。",
+    },
+    {
+      id: "player-launch",
+      passed: launch,
+      detail: launch ? "按下空白鍵會讓子彈移到主角並顯示。" : "請用空白鍵觸發，讓子彈移到主角位置後顯示。",
+    },
+    {
+      id: "player-flight",
+      passed: flight,
+      detail: flight ? "子彈會移動並偵測敵人與舞台邊緣。" : "請讓子彈移動到邊緣，並在碰到敵人或邊緣時隱藏。",
+    },
+  ]);
+}
+
+function analyzeChapterSeven(targets: ScratchTarget[]): ScratchAnalysis {
+  let best: ScratchBlock[] = [];
+  for (const target of targets.filter((item) => !item.isStage)) {
+    const script = topScript(target, "event_whenflagclicked");
+    const quality = ["control_forever", "motion_goto", "looks_show", "control_repeat_until", "motion_changexby"]
+      .filter((opcode) => script.some((block) => block.opcode === opcode)).length;
+    const bestQuality = ["control_forever", "motion_goto", "looks_show", "control_repeat_until", "motion_changexby"]
+      .filter((opcode) => best.some((block) => block.opcode === opcode)).length;
+    if (quality > bestQuality) best = script;
+  }
+  const opcodes = new Set(best.map((block) => block.opcode));
+  const projectileReady = targets.filter((target) => !target.isStage).length >= 4
+    && opcodes.has("looks_hide");
+  const autoLaunch = opcodes.has("control_forever") && opcodes.has("motion_goto")
+    && opcodes.has("looks_show") && opcodes.has("control_repeat_until") && opcodes.has("motion_changexby");
+  const collision = best.filter((block) => block.opcode === "sensing_touchingobject").length >= 2
+    && opcodes.has("looks_hide");
+
+  return result([
+    {
+      id: "enemy-projectile",
+      passed: projectileReady,
+      detail: projectileReady ? "作品有獨立的配角子彈，開始時會隱藏。" : "請建立獨立的配角子彈，並在綠旗開始時隱藏。",
+    },
+    {
+      id: "enemy-launch",
+      passed: autoLaunch,
+      detail: autoLaunch ? "配角子彈會重複定位、顯示並自動移動。" : "請在重複無限次中讓子彈移到配角、顯示並自動移動。",
+    },
+    {
+      id: "enemy-collision",
+      passed: collision,
+      detail: collision ? "配角子彈會偵測主角與舞台邊緣。" : "請偵測子彈碰到主角或舞台邊緣，並將子彈隱藏。",
+    },
+  ]);
+}
+
+function analyzeChapterEight(targets: ScratchTarget[]): ScratchAnalysis {
+  const blocks = targets.flatMap((target) => Object.values(target.blocks));
+  const createTarget = targets.find((target) => Object.values(target.blocks)
+    .some((block) => block.opcode === "control_create_clone_of"));
+  const createScript = createTarget ? topScript(createTarget, "event_whenflagclicked") : [];
+  const cloneScript = createTarget ? topScript(createTarget, "control_start_as_clone") : [];
+  const createOpcodes = new Set(createScript.map((block) => block.opcode));
+  const cloneOpcodes = new Set(cloneScript.map((block) => block.opcode));
+  const randomWait = createTarget && createScript.some((block) => (
+    block.opcode === "control_wait" && isRandomInput(block.inputs.DURATION, createTarget.blocks)
+  ));
+  const creates = Boolean(randomWait && createOpcodes.has("control_forever")
+    && createOpcodes.has("control_create_clone_of"));
+  const acts = cloneOpcodes.has("motion_goto") && cloneOpcodes.has("looks_show")
+    && cloneOpcodes.has("control_repeat_until") && cloneOpcodes.has("motion_changexby")
+    && cloneOpcodes.has("sensing_touchingobject");
+  const deletes = blocks.filter((block) => block.opcode === "control_delete_this_clone").length >= 2;
+
+  return result([
+    {
+      id: "clone-create",
+      passed: creates,
+      detail: creates ? "會在隨機等待後持續建立分身。" : "請在重複無限次中等待隨機時間，再建立分身。",
+    },
+    {
+      id: "clone-action",
+      passed: acts,
+      detail: acts ? "分身開始後會顯示、移動並偵測碰撞。" : "請在分身建立後加入定位、顯示、移動與碰撞偵測。",
+    },
+    {
+      id: "clone-delete",
+      passed: deletes,
+      detail: deletes ? "分身碰撞或到達邊緣後會刪除。" : "請在碰到主角與舞台邊緣時刪除分身。",
+    },
+  ]);
+}
+
+function analyzeChapterNine(targets: ScratchTarget[]): ScratchAnalysis {
+  const blocks = targets.flatMap((target) => Object.values(target.blocks));
+  const setBlocks = blocks.filter((block) => block.opcode === "data_setvariableto");
+  const changeBlocks = blocks.filter((block) => block.opcode === "data_changevariableby");
+  const initialized = setBlocks.find((block) => (
+    fieldId(block, "VARIABLE") && numberInputFromTargets(block.inputs.VALUE, targets, 0) > 0
+  ));
+  const variableId = fieldId(initialized, "VARIABLE");
+  const decreases = changeBlocks.some((block) => (
+    fieldId(block, "VARIABLE") === variableId && numberInputFromTargets(block.inputs.VALUE, targets, 0) < 0
+  ));
+  const hasCollision = blocks.some((block) => block.opcode === "sensing_touchingobject");
+
+  return result([
+    {
+      id: "score-variable",
+      passed: Boolean(variableId),
+      detail: variableId ? "作品有用來記錄敵人血量或分數的變數。" : "請建立敵人血量或計分類型的變數。",
+    },
+    {
+      id: "score-reset",
+      passed: Boolean(initialized),
+      detail: initialized ? "綠旗開始後會設定變數的初始值。" : "請在綠旗開始時把變數設為大於零的初始值。",
+    },
+    {
+      id: "score-change",
+      passed: decreases && hasCollision,
+      detail: decreases && hasCollision ? "碰撞後會減少同一個變數。" : "請在攻擊碰到敵人後減少同一個變數。",
+    },
+  ]);
+}
+
+function analyzeChapterTenBroadcast(targets: ScratchTarget[]): ScratchAnalysis {
+  const blocks = targets.flatMap((target) => Object.values(target.blocks));
+  const equalityVariables = new Set(blocks.filter((block) => block.opcode === "operator_equals")
+    .flatMap((block) => Object.values(block.inputs).flatMap(variableIdsInInput)));
+  const sends = blocks.filter((block) => block.opcode === "event_broadcast");
+  const receives = blocks.filter((block) => block.opcode === "event_whenbroadcastreceived");
+  const receivedMessages = new Set(receives.map((block) => fieldText(block, "BROADCAST_OPTION")).filter(Boolean));
+  const completeResults = targets.flatMap((target) => Object.values(target.blocks)
+    .filter((block) => block.topLevel && block.opcode === "event_whenbroadcastreceived")
+    .map((block) => [block, ...collectScriptBlocks(block.next, target.blocks)]))
+    .filter((script) => script.some((block) => block.opcode === "looks_show")
+      && script.some((block) => block.opcode === "control_stop")).length;
+  const conditions = equalityVariables.size >= 2
+    && blocks.filter((block) => block.opcode === "data_changevariableby").length >= 2;
+  const messages = sends.length >= 2 && receives.length >= 2 && receivedMessages.size >= 2;
+  const results = completeResults >= 2;
+
+  return result([
+    { id: "broadcast-conditions", passed: conditions, detail: conditions ? "作品會分別判斷兩個生命值變數是否歸零。" : "請分別判斷主角與敵人的生命值是否等於零。" },
+    { id: "broadcast-messages", passed: messages, detail: messages ? "作品具有兩種勝負廣播與對應接收程式。" : "請送出並接收 WIN／LOSE 兩種廣播。" },
+    { id: "broadcast-results", passed: results, detail: results ? "勝利與失敗角色收到廣播後會顯示並停止遊戲。" : "WIN 與 LOSE 角色收到廣播後都需顯示，並停止全部程式。" },
+  ]);
+}
+
+function analyzeChapterTenDirect(targets: ScratchTarget[]): ScratchAnalysis {
+  const blocks = targets.flatMap((target) => Object.values(target.blocks));
+  const hasBroadcasts = blocks.some((block) => block.opcode === "event_broadcast"
+    || block.opcode === "event_whenbroadcastreceived");
+  const resultScripts = targets.flatMap((target) => Object.values(target.blocks)
+    .filter((block) => block.topLevel && block.opcode === "event_whenflagclicked")
+    .map((block) => [block, ...collectScriptBlocks(block.next, target.blocks)]))
+    .filter((script) => script.some((block) => block.opcode === "control_wait_until"));
+  const equalityVariables = new Set(resultScripts.flatMap((script) => script
+    .filter((block) => block.opcode === "operator_equals")
+    .flatMap((block) => Object.values(block.inputs).flatMap(variableIdsInInput))));
+  const completeResults = resultScripts.filter((script) => script.some((block) => block.opcode === "looks_hide")
+    && script.some((block) => block.opcode === "looks_show")
+    && script.some((block) => block.opcode === "control_stop")).length;
+  const conditions = equalityVariables.size >= 2;
+  const waitsDirectly = !hasBroadcasts && resultScripts.length >= 2;
+  const results = completeResults >= 2;
+
+  return result([
+    { id: "direct-conditions", passed: conditions, detail: conditions ? "勝利與失敗程式分別檢查不同生命值。" : "請分別用主角與敵人生命值建立勝利及失敗條件。" },
+    { id: "direct-wait", passed: waitsDirectly, detail: waitsDirectly ? "兩個結果程式使用等待直到條件，且沒有廣播。" : "請使用等待直到直接判斷勝負，並移除廣播積木。" },
+    { id: "direct-results", passed: results, detail: results ? "條件成立後會顯示勝負畫面並停止遊戲。" : "勝利與失敗條件成立後都需顯示結果，並停止全部程式。" },
+  ]);
+}
+
+function analyzeChapterEleven(targets: ScratchTarget[]): ScratchAnalysis {
+  let best: { blocks: ScratchBlock[]; blockMap: Record<string, ScratchBlock> } | null = null;
+  for (const target of targets) {
+    for (const block of Object.values(target.blocks)) {
+      if (!block.topLevel || block.opcode !== "event_whenflagclicked") continue;
+      const candidate = [block, ...collectScriptBlocks(block.next, target.blocks)];
+      if (timerQuality(candidate) > timerQuality(best?.blocks ?? [])) best = { blocks: candidate, blockMap: target.blocks };
+    }
+  }
+  const blocks = best?.blocks ?? [];
+  const blockMap = best?.blockMap ?? {};
+  const initializedVariable = blocks.filter((block) => block.opcode === "data_setvariableto")
+    .find((block) => numberInput(block.inputs.VALUE, blockMap, 0) > 0);
+  const variableId = fieldId(initializedVariable, "VARIABLE");
+  const decreases = blocks.some((block) => block.opcode === "data_changevariableby"
+    && fieldId(block, "VARIABLE") === variableId && numberInput(block.inputs.VALUE, blockMap, 0) < 0);
+  const opcodes = new Set(blocks.map((block) => block.opcode));
+  const waits = blocks.some((block) => block.opcode === "control_wait"
+    && numberInput(block.inputs.DURATION, blockMap, 0) >= 0.5);
+  const checksZero = blocks.some((block) => block.opcode === "operator_equals"
+    && Object.values(block.inputs).some((input) => numberLiteralInInput(input) === 0));
+  const initialized = Boolean(initializedVariable && variableId);
+  const countdown = initialized && opcodes.has("control_repeat_until") && waits && decreases;
+  const finishes = checksZero && opcodes.has("control_stop");
+
+  return result([
+    { id: "timer-variable", passed: initialized, detail: initialized ? "綠旗開始後會設定時間初始值。" : "請在綠旗程式中將遊戲時間設為大於零。" },
+    { id: "timer-countdown", passed: countdown, detail: countdown ? "倒數流程會等待一秒，再減少同一個時間變數。" : "請在重複直到中等待一秒，並將遊戲時間減少一。" },
+    { id: "timer-finish", passed: finishes, detail: finishes ? "時間等於零後會停止遊戲。" : "請判斷時間等於零，並停止遊戲或進入結束流程。" },
+  ]);
+}
+
 function runChain(
   startId: string | null,
   blocks: Record<string, ScratchBlock>,
@@ -449,6 +680,15 @@ function collectScriptBlocks(startId: string | null, blocks: Record<string, Scra
   return found;
 }
 
+function topScript(
+  target: ScratchTarget,
+  opcode: string,
+  predicate: (block: ScratchBlock) => boolean = () => true,
+) {
+  const top = Object.values(target.blocks).find((block) => block.topLevel && block.opcode === opcode && predicate(block));
+  return top ? [top, ...collectScriptBlocks(top.next, target.blocks)] : [];
+}
+
 function numberInput(input: ScratchInput | undefined, blocks: Record<string, ScratchBlock>, fallback: number) {
   if (!Array.isArray(input)) return fallback;
   const value = input[1];
@@ -471,6 +711,35 @@ function blockReference(input: ScratchInput | undefined, blocks: Record<string, 
   return typeof value === "string" && blocks[value] ? value : null;
 }
 
+function fieldText(block: ScratchBlock | undefined, name: string) {
+  const field = block?.fields?.[name];
+  return Array.isArray(field) && typeof field[0] === "string" ? field[0] : "";
+}
+
+function fieldId(block: ScratchBlock | undefined, name: string) {
+  const field = block?.fields?.[name];
+  return Array.isArray(field) && typeof field[1] === "string" ? field[1] : "";
+}
+
+function variableIdsInInput(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const own = input[0] === 12 && typeof input[2] === "string" ? [input[2]] : [];
+  return [...own, ...input.flatMap(variableIdsInInput)];
+}
+
+function numberLiteralInInput(input: unknown): number | null {
+  if (!Array.isArray(input)) return null;
+  if ([4, 5, 6, 7, 8, 10].includes(Number(input[0]))) {
+    const value = Number(input[1]);
+    if (Number.isFinite(value)) return value;
+  }
+  for (const item of input) {
+    const value = numberLiteralInInput(item);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 function keyName(input: ScratchInput | undefined, sprites: ScratchTarget[]) {
   for (const sprite of sprites) {
     const id = blockReference(input, sprite.blocks);
@@ -487,6 +756,14 @@ function numberInputFromAnySprite(input: ScratchInput | undefined, sprites: Scra
     if (Number.isFinite(value)) return value;
   }
   return Number.NaN;
+}
+
+function numberInputFromTargets(input: ScratchInput | undefined, targets: ScratchTarget[], fallback: number) {
+  for (const target of targets) {
+    const value = numberInput(input, target.blocks, Number.NaN);
+    if (Number.isFinite(value)) return value;
+  }
+  return fallback;
 }
 
 function isRandomInput(input: ScratchInput | undefined, blocks: Record<string, ScratchBlock>) {
@@ -528,6 +805,18 @@ function controllerQuality(blocks: ScratchBlock[], sprites: ScratchTarget[]) {
     .map((block) => keyName(block.inputs.KEY_OPTION, sprites))
     .filter(Boolean).length;
   return keyCount * 100 + (opcodes.has("control_forever") ? 1000 : 0);
+}
+
+function timerQuality(blocks: ScratchBlock[]) {
+  const wanted = new Set([
+    "data_setvariableto",
+    "control_repeat_until",
+    "control_wait",
+    "data_changevariableby",
+    "operator_equals",
+    "control_stop",
+  ]);
+  return blocks.filter((block) => wanted.has(block.opcode)).length;
 }
 
 function pushPoint(state: MotionState) {

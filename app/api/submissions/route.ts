@@ -27,16 +27,16 @@ export async function POST(request: Request) {
   if (!studentId || !Number.isInteger(chapterNo)) {
     return jsonError("缺少學生或章節資料。");
   }
+  const chapter = getChapter(chapterNo);
+  if (!chapter) return jsonError("找不到章節。");
   if (!fileName.toLowerCase().endsWith(".sb3")) {
     return jsonError("請選擇 Scratch .sb3 檔案。");
   }
-  const maxSubmissionSize = chapterNo === 3 ? MAX_FILE_SIZE * 2 : MAX_FILE_SIZE;
+  const expectedFileCount = chapter.submissionTasks?.length ?? 1;
+  const maxSubmissionSize = MAX_FILE_SIZE * expectedFileCount;
   if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > maxSubmissionSize) {
-    return jsonError(chapterNo === 3 ? "兩個檔案都需小於 20MB。" : "檔案需小於 20MB。");
+    return jsonError(expectedFileCount > 1 ? "每個檔案都需小於 20MB。" : "檔案需小於 20MB。");
   }
-
-  const chapter = getChapter(chapterNo);
-  if (!chapter) return jsonError("找不到章節。");
 
   const checkedIds = Array.isArray(payload?.checklist)
     ? payload.checklist.filter((item): item is string => typeof item === "string")

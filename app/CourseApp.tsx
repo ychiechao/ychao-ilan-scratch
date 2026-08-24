@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
-import { analyzeScratchFile, type ScratchAnalysis } from "./scratch-analyzer";
+import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
 
 type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
 
@@ -263,8 +263,10 @@ export function CourseApp() {
     const form = new FormData(event.currentTarget);
 
     try {
-      const files = chapterNo === 3
-        ? [form.get("file-glide"), form.get("file-coordinates")]
+      const currentChapter = chapters.find((chapter) => chapter.no === chapterNo);
+      const tasks = currentChapter?.submissionTasks ?? [];
+      const files = tasks.length > 0
+        ? tasks.map((task) => form.get(`file-${task.id}`))
         : [form.get("file")];
       const scratchFiles = files.map((file) => validateScratchFile(file));
       await Promise.all(scratchFiles.map(async (file) => {
@@ -274,16 +276,14 @@ export function CourseApp() {
         }
       }));
       let checklist = checked[chapterNo] ?? [];
-      if (chapterNo === 3) {
-        const [glide, coordinates] = await Promise.all([
-          analyzeScratchFile(scratchFiles[0], 3, "glide"),
-          analyzeScratchFile(scratchFiles[1], 3, "coordinates"),
-        ]);
-        checklist = [...glide.passedIds, ...coordinates.passedIds];
+      if (tasks.length > 0) {
+        const results = await Promise.all(tasks.map((task, index) => (
+          analyzeScratchFile(scratchFiles[index], chapterNo, task.id as ScratchTask)
+        )));
+        checklist = results.flatMap((analysis) => analysis.passedIds);
         setScratchResults((current) => ({
           ...current,
-          "3:glide": glide,
-          "3:coordinates": coordinates,
+          ...Object.fromEntries(tasks.map((task, index) => [`${chapterNo}:${task.id}`, results[index]])),
         }));
         setChecked((current) => ({ ...current, [chapterNo]: checklist }));
       } else if (isAutomaticChapter(chapterNo)) {
@@ -1226,7 +1226,7 @@ function ChapterSubmit({
             ))}
           </div>
         )}
-        {chapter.no > 5 && (
+        {!isAutomaticChapter(chapter.no) && !chapter.submissionTasks && (
           <label className="file-field">
             選擇 Scratch 檔案進行檢核
             <input name="file" type="file" accept=".sb3" required />
@@ -1308,7 +1308,7 @@ function validateScratchFile(value: FormDataEntryValue | null) {
 }
 
 function isAutomaticChapter(chapterNo: number) {
-  return chapterNo === 1 || chapterNo === 2 || chapterNo === 4 || chapterNo === 5;
+  return chapterNo >= 1 && chapterNo <= 11 && chapterNo !== 3 && chapterNo !== 10;
 }
 
 function TeacherRoster({
