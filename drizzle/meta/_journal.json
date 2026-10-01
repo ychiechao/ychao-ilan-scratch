@@ -36,6 +36,20 @@
       "when": 1787533200000,
       "tag": "0004_student_email_login",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790082000000,
+      "tag": "0005_course_library",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790168400000,
+      "tag": "0006_google_drive_storage",
+      "breakpoints": true
     }
   ]
 }

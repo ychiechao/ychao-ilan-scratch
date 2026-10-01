@@ -1,0 +1,15 @@
+{
+  "auth": {
+    "authorizedDomains": [
+      "localhost",
+      "ychao-booking-schedule.firebaseapp.com",
+      "yilan-scratch-course.ychao-ilc.workers.dev"
+    ],
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "宜蘭 Scratch 基礎課程",
+        "supportEmail": "ychao.ilc@smail.ilc.edu.tw"
+      }
+    }
+  }
+}

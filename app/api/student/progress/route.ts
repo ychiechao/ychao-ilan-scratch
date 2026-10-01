@@ -1,13 +1,11 @@
-import { cleanText, getStudentProgress, jsonError, publicClass } from "../../_lib";
+import { getStudentProgress, jsonError, publicClass } from "../../_lib";
 import { ensureDb } from "../../../../db";
+import { requireStudent } from "../../auth";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const studentId = cleanText(searchParams.get("studentId"), 80);
-
-  if (!studentId) {
-    return jsonError("缺少學生資料。");
-  }
+  const actor = await requireStudent(request);
+  if (actor instanceof Response) return actor;
+  const studentId = actor.student.id;
 
   const db = await ensureDb();
   const student = await db

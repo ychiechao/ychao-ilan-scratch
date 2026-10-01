@@ -1,13 +1,16 @@
 import { chapters } from "../../../course-data";
 import { cleanText, jsonError } from "../../_lib";
 import { ensureDb } from "../../../../db";
+import { requireTeacher } from "../../auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const teacherId = cleanText(searchParams.get("teacherId"), 80);
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
   const classId = cleanText(searchParams.get("classId"), 80);
 
-  if (!teacherId || !classId) {
+  if (!classId) {
     return jsonError("缺少老師或班級資料。");
   }
 

@@ -1,25 +1,25 @@
 import {
   cleanText,
-  hashPin,
-  isValidEmail,
   jsonError,
-  normalizeEmail,
   publicClass,
   publicStudent,
 } from "../../_lib";
 import { ensureDb } from "../../../../db";
+import { FirebaseAuthError, verifyFirebaseIdToken } from "../../firebase-auth";
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
-    email?: string;
-    pin?: string;
+    idToken?: string;
   } | null;
 
-  const email = normalizeEmail(payload?.email);
-  const pin = cleanText(payload?.pin, 12);
-  if (!isValidEmail(email) || pin.length < 4) {
-    return jsonError("請輸入 Email 與至少 4 碼 PIN。");
+  let firebaseUser;
+  try {
+    firebaseUser = await verifyFirebaseIdToken(cleanText(payload?.idToken, 4096));
+  } catch (error) {
+    if (error instanceof FirebaseAuthError) return jsonError(error.message, error.status);
+    return jsonError("Google 登入驗證失敗。", 401);
   }
+  const email = firebaseUser.email.toLowerCase();
 
   const db = await ensureDb();
   const student = await db
@@ -40,9 +40,11 @@ export async function POST(request: Request) {
       created_at: string;
     }>();
 
-  if (!student || student.pin_hash !== (await hashPin(`${student.class_id}:${student.seat_no}`, pin))) {
-    return jsonError("Email 或 PIN 不正確。", 401);
+  if (!student) {
+    return jsonError("找不到這個 Google 帳號的學生資料，請先加入班級。", 401);
   }
+  await db.prepare("UPDATE students SET firebase_uid = ? WHERE id = ?")
+    .bind(firebaseUser.localId, student.id).run();
 
   const classRow = await db
     .prepare("SELECT * FROM classes WHERE id = ?")

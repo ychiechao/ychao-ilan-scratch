@@ -689,7 +689,7 @@ function topScript(
   return top ? [top, ...collectScriptBlocks(top.next, target.blocks)] : [];
 }
 
-function numberInput(input: ScratchInput | undefined, blocks: Record<string, ScratchBlock>, fallback: number) {
+function numberInput(input: ScratchInput | undefined, blocks: Record<string, ScratchBlock>, fallback: number): number {
   if (!Array.isArray(input)) return fallback;
   const value = input[1];
   if (Array.isArray(value)) {
@@ -697,8 +697,8 @@ function numberInput(input: ScratchInput | undefined, blocks: Record<string, Scr
     return Number.isFinite(number) ? number : fallback;
   }
   if (typeof value === "string" && blocks[value]?.opcode === "operator_random") {
-    const from = numberInput(blocks[value].inputs.FROM, blocks, fallback);
-    const to = numberInput(blocks[value].inputs.TO, blocks, fallback);
+    const from: number = numberInput(blocks[value].inputs.FROM, blocks, fallback);
+    const to: number = numberInput(blocks[value].inputs.TO, blocks, fallback);
     return (from + to) / 2;
   }
   const number = Number(value);

@@ -7,6 +7,7 @@ import {
   jsonError,
   scoreChecklist,
 } from "../_lib";
+import { requireStudent, requireTeacher } from "../auth";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -19,12 +20,14 @@ export async function POST(request: Request) {
     fileSize?: number;
   } | null;
 
-  const studentId = cleanText(payload?.studentId, 80);
+  const actor = await requireStudent(request);
+  if (actor instanceof Response) return actor;
+  const studentId = actor.student.id;
   const chapterNo = Number(payload?.chapterNo);
   const fileName = cleanText(payload?.fileName, 180);
   const fileSize = Number(payload?.fileSize);
 
-  if (!studentId || !Number.isInteger(chapterNo)) {
+  if (!Number.isInteger(chapterNo)) {
     return jsonError("缺少學生或章節資料。");
   }
   const chapter = getChapter(chapterNo);
@@ -121,12 +124,13 @@ export async function PATCH(request: Request) {
     submissionId?: string;
   } | null;
   const action = cleanText(payload?.action, 30);
-  const studentId = cleanText(payload?.studentId, 80);
-  const teacherId = cleanText(payload?.teacherId, 80);
   const submissionId = cleanText(payload?.submissionId, 80);
   const db = await ensureDb();
 
   if (action === "mark_uploaded") {
+    const actor = await requireStudent(request);
+    if (actor instanceof Response) return actor;
+    const studentId = actor.student.id;
     const result = await db
       .prepare(
         `UPDATE submissions SET status = 'uploaded', external_status = 'reported',
@@ -146,6 +150,10 @@ export async function PATCH(request: Request) {
   if (action !== "confirm" && action !== "resubmit") {
     return jsonError("不支援的繳交操作。");
   }
+
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
 
   const row = await db
     .prepare(

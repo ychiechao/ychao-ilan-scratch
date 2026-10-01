@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
+import { authorizedFetch, signInWithGoogle, signOutFirebase } from "./firebase-client";
 
 type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
 
@@ -78,7 +79,11 @@ type AdminClass = ClassInfo & {
   student_count?: number;
 };
 
-type AdminDashboard = { teachers: Teacher[]; classes: AdminClass[] };
+type AdminDashboard = {
+  teachers: Teacher[];
+  classes: AdminClass[];
+  fileStorage: { configured: boolean; provider?: string; mode?: string };
+};
 
 type NoticeType = "success" | "error" | "info";
 type Notice = { type: NoticeType; text: string } | null;
@@ -172,7 +177,7 @@ export function CourseApp() {
   const [busy, setBusy] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(() => readStored("scratch-teacher"));
   const [admin, setAdmin] = useState<Teacher | null>(() => readStored("scratch-admin"));
-  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard>({ teachers: [], classes: [] });
+  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard>({ teachers: [], classes: [], fileStorage: { configured: false } });
   const [classes, setClasses] = useState<ClassInfo[]>(() => readStored("scratch-classes") ?? []);
   const [selectedClassId, setSelectedClassId] = useState(
     () => readStored<ClassInfo[]>("scratch-classes")?.[0]?.id ?? ""
@@ -186,6 +191,11 @@ export function CourseApp() {
   const [checked, setChecked] = useState<Record<number, string[]>>({});
   const [scratchResults, setScratchResults] = useState<Record<string, ScratchAnalysis>>({});
   const [selectedChapter, setSelectedChapter] = useState(initialChapter);
+
+  useEffect(() => {
+    if (!admin?.id) return;
+    void authorizedFetch("/api/admin/dashboard").then((response) => readJson<AdminDashboard>(response)).then(setAdminDashboard).catch(() => undefined);
+  }, [admin?.id]);
 
   const earnedCount = badges.length;
   const progressPercent = Math.round((earnedCount / chapters.length) * 100);
@@ -206,12 +216,12 @@ export function CourseApp() {
     setNotice({ type, text });
   }
 
-  async function refreshStudent(studentId: string) {
+  async function refreshStudent() {
     const data = await readJson<{
       submissions: Submission[];
       badges: Badge[];
       class?: ClassInfo;
-    }>(await fetch(`/api/student/progress?studentId=${encodeURIComponent(studentId)}`));
+    }>(await authorizedFetch("/api/student/progress"));
     setSubmissions(data.submissions);
     setBadges(data.badges);
     if (data.class) setStudentClass(data.class);
@@ -220,8 +230,8 @@ export function CourseApp() {
   async function refreshDashboard(classId: string, teacherId = teacher?.id) {
     if (!teacherId) return;
     const data = await readJson<Dashboard>(
-      await fetch(
-        `/api/teacher/dashboard?teacherId=${encodeURIComponent(teacherId)}&classId=${encodeURIComponent(classId)}`
+      await authorizedFetch(
+        `/api/teacher/dashboard?classId=${encodeURIComponent(classId)}`
       )
     );
     setDashboard(data);
@@ -230,7 +240,7 @@ export function CourseApp() {
   async function refreshAdmin(adminId = admin?.id) {
     if (!adminId) return;
     const data = await readJson<AdminDashboard>(
-      await fetch("/api/admin/dashboard")
+      await authorizedFetch("/api/admin/dashboard")
     );
     setAdminDashboard(data);
   }
@@ -240,6 +250,7 @@ export function CourseApp() {
     setBusy(true);
     const form = new FormData(event.currentTarget);
     try {
+      const google = await signInWithGoogle();
       const data = await readJson<{ student: Student; class: ClassInfo }>(
         await fetch("/api/student/join", {
           method: "POST",
@@ -248,8 +259,7 @@ export function CourseApp() {
             classCode: form.get("classCode"),
             seatNo: form.get("seatNo"),
             nickname: form.get("nickname"),
-            email: form.get("email"),
-            pin: form.get("pin"),
+            idToken: google.idToken,
           }),
         })
       );
@@ -257,7 +267,7 @@ export function CourseApp() {
       setStudentClass(data.class);
       localStorage.setItem("scratch-student", JSON.stringify(data.student));
       localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
-      await refreshStudent(data.student.id);
+      await refreshStudent();
       show("success", "已加入班級，可以開始上傳章節作品。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "加入班級失敗。");
@@ -269,20 +279,20 @@ export function CourseApp() {
   async function loginStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    const form = new FormData(event.currentTarget);
     try {
+      const google = await signInWithGoogle();
       const data = await readJson<{ student: Student; class: ClassInfo }>(
         await fetch("/api/student/login", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+          body: JSON.stringify({ idToken: google.idToken }),
         })
       );
       setStudent(data.student);
       setStudentClass(data.class);
       localStorage.setItem("scratch-student", JSON.stringify(data.student));
       localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
-      await refreshStudent(data.student.id);
+      await refreshStudent();
       show("success", "登入成功，已載入你的課程進度。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "學生登入失敗。");
@@ -332,11 +342,10 @@ export function CourseApp() {
         badges: Badge[];
         submission: { status: string; score: number; missing: string[] };
       }>(
-        await fetch("/api/submissions", {
+        await authorizedFetch("/api/submissions", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            studentId: student.id,
             chapterNo,
             checklist,
             fileName: scratchFiles.map((file) => file.name).join(" / "),
@@ -369,10 +378,10 @@ export function CourseApp() {
     setBusy(true);
     try {
       const data = await readJson<{ submissions: Submission[]; badges: Badge[] }>(
-        await fetch("/api/submissions", {
+        await authorizedFetch("/api/submissions", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action: "mark_uploaded", studentId: student.id, submissionId }),
+          body: JSON.stringify({ action: "mark_uploaded", submissionId }),
         })
       );
       setSubmissions(data.submissions);
@@ -392,11 +401,10 @@ export function CourseApp() {
     const form = new FormData(event.currentTarget);
     try {
       const data = await readJson<{ class: ClassInfo }>(
-        await fetch("/api/classes", {
+        await authorizedFetch("/api/classes", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            teacherId: teacher.id,
             classId: selectedClassId,
             submissionUrl: form.get("submissionUrl"),
             submissionLabel: form.get("submissionLabel"),
@@ -420,10 +428,10 @@ export function CourseApp() {
     setBusy(true);
     try {
       await readJson<{ ok: boolean }>(
-        await fetch("/api/submissions", {
+        await authorizedFetch("/api/submissions", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action, teacherId: teacher.id, submissionId }),
+          body: JSON.stringify({ action, submissionId }),
         })
       );
       await refreshDashboard(selectedClassId);
@@ -440,14 +448,14 @@ export function CourseApp() {
     setBusy(true);
     const form = new FormData(event.currentTarget);
     try {
+      const google = await signInWithGoogle();
       const data = await readJson<{ teacher: Teacher; classes: ClassInfo[] }>(
         await fetch("/api/teacher/register", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             name: form.get("name"),
-            email: form.get("email"),
-            pin: form.get("pin"),
+            idToken: google.idToken,
             className: form.get("className"),
           }),
         })
@@ -468,7 +476,7 @@ export function CourseApp() {
           await fetch("/api/admin/login", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+            body: JSON.stringify({ idToken: google.idToken }),
           })
         );
         setAdmin(session.admin);
@@ -489,13 +497,13 @@ export function CourseApp() {
   async function loginTeacher(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    const form = new FormData(event.currentTarget);
     try {
+      const google = await signInWithGoogle();
       const data = await readJson<{ teacher: Teacher; classes: ClassInfo[] }>(
         await fetch("/api/teacher/login", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+          body: JSON.stringify({ idToken: google.idToken }),
         })
       );
       setTeacher(data.teacher);
@@ -508,7 +516,7 @@ export function CourseApp() {
           await fetch("/api/admin/login", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+            body: JSON.stringify({ idToken: google.idToken }),
           })
         );
         setAdmin(session.admin);
@@ -533,10 +541,10 @@ export function CourseApp() {
     const form = new FormData(event.currentTarget);
     try {
       const data = await readJson<{ class: ClassInfo }>(
-        await fetch("/api/classes", {
+        await authorizedFetch("/api/classes", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ teacherId: teacher.id, name: form.get("name") }),
+          body: JSON.stringify({ name: form.get("name") }),
         })
       );
       const nextClasses = [data.class, ...classes];
@@ -561,13 +569,13 @@ export function CourseApp() {
   async function loginAdmin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    const form = new FormData(event.currentTarget);
     try {
+      const google = await signInWithGoogle();
       const data = await readJson<{ admin: Teacher }>(
         await fetch("/api/admin/login", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: form.get("email"), pin: form.get("pin") }),
+          body: JSON.stringify({ idToken: google.idToken }),
         })
       );
       setAdmin(data.admin);
@@ -586,7 +594,7 @@ export function CourseApp() {
     setBusy(true);
     try {
       await readJson<{ ok: boolean }>(
-        await fetch("/api/admin/actions", {
+        await authorizedFetch("/api/admin/actions", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),
@@ -601,41 +609,6 @@ export function CourseApp() {
     }
   }
 
-  async function resetTeacherPin(event: FormEvent<HTMLFormElement>, teacherId: string) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    await runAdminAction(
-      { action: "reset_teacher_pin", teacherId, newPin: form.get("newPin") },
-      "已設定臨時 PIN，請口頭通知老師。"
-    );
-    event.currentTarget.reset();
-  }
-
-  async function changeTeacherPin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!teacher) return;
-    setBusy(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      await readJson<{ ok: boolean }>(
-        await fetch("/api/teacher/pin", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ teacherId: teacher.id, currentPin: form.get("currentPin"), newPin: form.get("newPin") }),
-        })
-      );
-      const nextTeacher = { ...teacher, mustChangePin: false };
-      setTeacher(nextTeacher);
-      localStorage.setItem("scratch-teacher", JSON.stringify(nextTeacher));
-      event.currentTarget.reset();
-      show("success", "PIN 已更新。");
-    } catch (error) {
-      show("error", error instanceof Error ? error.message : "無法更新 PIN。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function saveStudent(event: FormEvent<HTMLFormElement>, studentId?: string) {
     event.preventDefault();
     if (!teacher || !selectedClassId) return;
@@ -643,23 +616,21 @@ export function CourseApp() {
     const form = new FormData(event.currentTarget);
     try {
       await readJson<{ ok: boolean }>(
-        await fetch("/api/teacher/students", {
+        await authorizedFetch("/api/teacher/students", {
           method: studentId ? "PATCH" : "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            teacherId: teacher.id,
             classId: selectedClassId,
             studentId,
             seatNo: form.get("seatNo"),
             nickname: form.get("nickname"),
             email: form.get("email"),
-            pin: form.get("pin"),
           }),
         })
       );
       await refreshDashboard(selectedClassId);
       if (!studentId) event.currentTarget.reset();
-      show("success", studentId ? "學生資料與 PIN 已更新。" : "已新增學生。");
+      show("success", studentId ? "學生資料已更新。" : "已新增學生。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "無法儲存學生資料。");
     } finally {
@@ -673,10 +644,10 @@ export function CourseApp() {
     setBusy(true);
     try {
       await readJson<{ ok: boolean }>(
-        await fetch("/api/teacher/students", {
+        await authorizedFetch("/api/teacher/students", {
           method: "DELETE",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ teacherId: teacher.id, classId: selectedClassId, studentId: student.id }),
+          body: JSON.stringify({ classId: selectedClassId, studentId: student.id }),
         })
       );
       await refreshDashboard(selectedClassId);
@@ -698,6 +669,7 @@ export function CourseApp() {
   }
 
   function logoutStudent() {
+    void signOutFirebase();
     localStorage.removeItem("scratch-student");
     localStorage.removeItem("scratch-student-class");
     setStudent(null);
@@ -708,6 +680,7 @@ export function CourseApp() {
   }
 
   function logoutTeacher() {
+    void signOutFirebase();
     localStorage.removeItem("scratch-teacher");
     localStorage.removeItem("scratch-classes");
     setTeacher(null);
@@ -717,9 +690,10 @@ export function CourseApp() {
 
   async function logoutAdmin() {
     await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
+    await signOutFirebase().catch(() => null);
     localStorage.removeItem("scratch-admin");
     setAdmin(null);
-    setAdminDashboard({ teachers: [], classes: [] });
+    setAdminDashboard({ teachers: [], classes: [], fileStorage: { configured: false } });
   }
 
   const selected = chapters.find((chapter) => chapter.no === selectedChapter) ?? chapters[0];
@@ -738,6 +712,9 @@ export function CourseApp() {
             12 堂射擊遊戲課程，學生在裝置上完成自我檢核，老師以自選雲端收件並掌握進度。
           </p>
           <div className="hero__actions">
+            <a className="hero-link" href="/library">公開課程庫</a>
+            <a className="hero-link" href="/learn">我的班級課程</a>
+            <a className="hero-link" href="/studio">課程設計室</a>
             <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>
               學生入口
             </button>
@@ -837,15 +814,7 @@ export function CourseApp() {
 
                   {studentAccessMode === "login" ? (
                     <form className="form-grid student-login-form" onSubmit={loginStudent}>
-                      <label>
-                        Email
-                        <input name="email" type="email" placeholder="student@example.com" autoComplete="email" required />
-                      </label>
-                      <label>
-                        學習 PIN
-                        <input name="pin" type="password" minLength={4} maxLength={12} placeholder="4 碼以上" autoComplete="current-password" required />
-                      </label>
-                      <button disabled={busy}>登入課程</button>
+                      <button disabled={busy}>使用 Google 登入課程</button>
                     </form>
                   ) : (
                     <form className="form-grid student-join-form" onSubmit={joinStudent}>
@@ -861,19 +830,11 @@ export function CourseApp() {
                         暱稱
                         <input name="nickname" placeholder="例如 小宜" autoComplete="nickname" required />
                       </label>
-                      <label>
-                        Email
-                        <input name="email" type="email" placeholder="student@example.com" autoComplete="email" required />
-                      </label>
-                      <label>
-                        學習 PIN
-                        <input name="pin" type="password" minLength={4} maxLength={12} placeholder="4 碼以上" autoComplete="new-password" required />
-                      </label>
-                      <button disabled={busy}>加入班級</button>
+                      <button disabled={busy}>使用 Google 帳號加入班級</button>
                     </form>
                   )}
                   <p className="student-access__note">
-                    舊帳號若尚未設定 Email，請用「第一次加入班級」輸入原本的班級、座號與 PIN，即可補上 Email。
+                    登入帳號由 Firebase Authentication 保護，Email 會由 Google 帳號自動帶入。
                   </p>
                 </div>
               ) : (
@@ -941,31 +902,15 @@ export function CourseApp() {
                       <input name="name" placeholder="例如 林老師" />
                     </label>
                     <label>
-                      Email
-                      <input name="email" type="email" placeholder="teacher@example.com" />
-                    </label>
-                    <label>
-                      老師 PIN
-                      <input name="pin" type="password" minLength={4} placeholder="4 碼以上" />
-                    </label>
-                    <label>
                       班級名稱
                       <input name="className" placeholder="例如 五年甲班 Scratch" />
                     </label>
-                    <button disabled={busy}>建立班級代碼</button>
+                    <button disabled={busy}>使用 Google 註冊並建立班級</button>
                   </form>
 
                   <form onSubmit={loginTeacher}>
                     <h3>老師登入</h3>
-                    <label>
-                      Email
-                      <input name="email" type="email" placeholder="teacher@example.com" />
-                    </label>
-                    <label>
-                      老師 PIN
-                      <input name="pin" type="password" minLength={4} placeholder="4 碼以上" />
-                    </label>
-                    <button disabled={busy}>進入後台</button>
+                    <button disabled={busy}>使用 Google 進入後台</button>
                   </form>
                 </div>
               ) : (
@@ -1065,15 +1010,6 @@ export function CourseApp() {
                     </div>
                   )}
 
-                  <form className="pin-change" onSubmit={changeTeacherPin}>
-                    <div>
-                      <span>{teacher.mustChangePin ? "需要更換" : "帳號安全"}</span>
-                      <strong>變更老師 PIN</strong>
-                    </div>
-                    <input name="currentPin" type="password" minLength={4} placeholder="目前或臨時 PIN" required />
-                    <input name="newPin" type="password" minLength={4} placeholder="新 PIN" required />
-                    <button disabled={busy}>更新 PIN</button>
-                  </form>
                     </>
                   )}
                 </>
@@ -1088,28 +1024,26 @@ export function CourseApp() {
                   <p className="eyebrow">Super Admin</p>
                   <h2>超級管理後台</h2>
                 </div>
-                {admin && <button className="ghost" onClick={logoutAdmin}>登出</button>}
+                {admin && <div className="admin-heading-actions"><a className="text-link" href="/admin/storage">檔案儲存狀態</a>{adminDashboard.fileStorage.configured && <a className="text-link" href="/admin/courses">課程審核</a>}<button className="ghost" onClick={logoutAdmin}>登出</button></div>}
               </div>
               {!admin ? (
                 <form className="admin-login" onSubmit={loginAdmin}>
                   <h3>超級管理者登入</h3>
-                  <label>
-                    Email
-                    <input name="email" type="email" placeholder="admin@example.com" required />
-                  </label>
-                  <label>
-                    PIN
-                    <input name="pin" type="password" minLength={4} required />
-                  </label>
-                  <button disabled={busy}>進入管理後台</button>
+                  <button disabled={busy}>使用 Google 進入管理後台</button>
                 </form>
+              ) : !adminDashboard.fileStorage.configured ? (
+                <div className="admin-storage-required">
+                  <p className="eyebrow">Storage unavailable</p>
+                  <h3>Cloudflare 檔案儲存尚未連線</h3>
+                  <p>目前無法保存教師參考作品，請通知網站管理者檢查部署設定。</p>
+                  <a className="primary-link" href="/admin/storage">查看儲存狀態</a>
+                </div>
               ) : (
                 <AdminConsole
                   dashboard={adminDashboard}
                   busy={busy}
                   onRefresh={() => refreshAdmin()}
                   onAction={runAdminAction}
-                  onResetPin={resetTeacherPin}
                 />
               )}
             </div>
@@ -1413,7 +1347,6 @@ function TeacherRoster({
         <input name="seatNo" placeholder="座號" required />
         <input name="nickname" placeholder="暱稱" required />
         <input name="email" type="email" placeholder="學生 Email" required />
-        <input name="pin" type="password" minLength={4} placeholder="初始 PIN" required />
         <button disabled={busy}>新增學生</button>
       </form>
       <div className="roster-list">
@@ -1422,8 +1355,7 @@ function TeacherRoster({
           <form key={item.id} className="roster-row" onSubmit={(event) => onSave(event, item.id)}>
             <input name="seatNo" defaultValue={seatOf(item)} aria-label={`${item.nickname}座號`} required />
             <input name="nickname" defaultValue={item.nickname} aria-label="暱稱" required />
-            <input name="email" type="email" defaultValue={item.email ?? ""} placeholder="學生 Email" aria-label="學生 Email" required />
-            <input name="pin" type="password" minLength={4} placeholder="設定新 PIN" aria-label="新 PIN" required />
+            <input name="email" type="email" defaultValue={item.email ?? ""} placeholder="學生 Email" aria-label="學生 Email" readOnly required />
             <button disabled={busy}>儲存</button>
             <button type="button" className="danger" disabled={busy} onClick={() => onRemove(item)}>剔除</button>
           </form>
@@ -1438,13 +1370,11 @@ function AdminConsole({
   busy,
   onRefresh,
   onAction,
-  onResetPin,
 }: {
   dashboard: AdminDashboard;
   busy: boolean;
   onRefresh: () => void;
   onAction: (payload: Record<string, unknown>, successMessage: string) => Promise<void>;
-  onResetPin: (event: FormEvent<HTMLFormElement>, teacherId: string) => void;
 }) {
   const pendingTeachers = dashboard.teachers.filter((item) => item.role !== "superadmin" && item.status === "pending").length;
   const pendingClasses = dashboard.classes.filter((item) => item.status === "pending").length;
@@ -1478,10 +1408,6 @@ function AdminConsole({
                   >
                     {item.status === "active" ? "停用" : "啟用"}
                   </button>
-                  <form onSubmit={(event) => onResetPin(event, item.id)}>
-                    <input name="newPin" type="password" minLength={4} placeholder="臨時 PIN" required />
-                    <button disabled={busy}>重設 PIN</button>
-                  </form>
                 </>
               )}
             </article>

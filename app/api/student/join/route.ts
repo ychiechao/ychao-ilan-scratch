@@ -10,24 +10,30 @@ import {
   publicStudent,
 } from "../../_lib";
 import { ensureDb } from "../../../../db";
+import { FirebaseAuthError, verifyFirebaseIdToken } from "../../firebase-auth";
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
     classCode?: string;
     seatNo?: string;
     nickname?: string;
-    email?: string;
-    pin?: string;
+    idToken?: string;
   } | null;
 
+  let firebaseUser;
+  try {
+    firebaseUser = await verifyFirebaseIdToken(cleanText(payload?.idToken, 4096));
+  } catch (error) {
+    if (error instanceof FirebaseAuthError) return jsonError(error.message, error.status);
+    return jsonError("Google 登入驗證失敗。", 401);
+  }
   const classCode = normalizeClassCode(cleanText(payload?.classCode, 20));
   const seatNo = cleanText(payload?.seatNo, 10);
   const nickname = cleanText(payload?.nickname, 40);
-  const email = normalizeEmail(payload?.email);
-  const pin = cleanText(payload?.pin, 12);
+  const email = normalizeEmail(firebaseUser.email);
 
-  if (!classCode || !seatNo || !nickname || !isValidEmail(email) || pin.length < 4) {
-    return jsonError("請輸入班級代碼、座號、暱稱、正確的 Email 與至少 4 碼 PIN。");
+  if (!classCode || !seatNo || !nickname || !isValidEmail(email)) {
+    return jsonError("請輸入班級代碼、座號與暱稱，並使用 Google 登入。");
   }
 
   const db = await ensureDb();
@@ -49,12 +55,12 @@ export async function POST(request: Request) {
     .bind((classRow as { id: string }).id, seatNo)
     .first();
 
-  const pinHash = await hashPin(`${(classRow as { id: string }).id}:${seatNo}`, pin);
+  const pinHash = await hashPin(`${(classRow as { id: string }).id}:${seatNo}`, `firebase:${firebaseUser.localId}`);
 
   if (existing) {
-    const student = existing as { pin_hash: string; id: string };
-    if (student.pin_hash !== pinHash) {
-      return jsonError("這個座號已加入班級，PIN 不正確。", 401);
+    const student = existing as { id: string; email?: string | null };
+    if (student.email && normalizeEmail(student.email) !== email) {
+      return jsonError("這個座號已綁定其他 Google 帳號。", 401);
     }
 
     const emailOwner = await db
@@ -66,8 +72,8 @@ export async function POST(request: Request) {
     }
 
     await db
-      .prepare("UPDATE students SET nickname = ?, email = ? WHERE id = ?")
-      .bind(nickname, email, student.id)
+      .prepare("UPDATE students SET nickname = ?, email = ?, firebase_uid = ? WHERE id = ?")
+      .bind(nickname, email, firebaseUser.localId, student.id)
       .run();
     const updated = await db
       .prepare("SELECT * FROM students WHERE id = ?")
@@ -84,11 +90,12 @@ export async function POST(request: Request) {
   try {
     await db
       .prepare(
-        "INSERT INTO students (id, class_id, seat_no, nickname, email, pin_hash) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO students (id, class_id, seat_no, nickname, email, firebase_uid, pin_hash) VALUES (?, ?, ?, ?, ?, ?, ?)"
       )
-      .bind(studentId, (classRow as { id: string }).id, seatNo, nickname, email, pinHash)
+      .bind(studentId, (classRow as { id: string }).id, seatNo, nickname, email, firebaseUser.localId, pinHash)
       .run();
-  } catch {
+  } catch (error) {
+    if (error instanceof FirebaseAuthError) return jsonError(error.message, error.status);
     return jsonError("這個 Email 已經綁定其他學生帳號。", 409);
   }
 

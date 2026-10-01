@@ -33,11 +33,30 @@ test("server-renders the course platform shell", async () => {
   assert.match(html, /已加入學生登入/);
   assert.match(html, /第一次加入班級/);
   assert.match(html, /登入課程/);
-  assert.match(html, /<input(?=[^>]*name="email")(?=[^>]*type="email")[^>]*>/);
+  assert.match(html, /使用 Google 登入課程/);
+  assert.doesNotMatch(html, /name="pin"|Firebase 密碼/);
   assert.match(html, /老師後台/);
   assert.match(html, /課程地圖/);
+  assert.match(html, /公開課程庫/);
+  assert.match(html, /課程設計室/);
+  assert.match(html, /我的班級課程/);
   assert.match(html, /aria-label="回到課程地圖"[^>]*>\s*宜蘭 Scratch 基礎課程/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
+});
+
+test("server-renders the new course platform entry pages", async () => {
+  const cases = [
+    ["/studio", "Scratch 課程設計室"],
+    ["/library", "Scratch 公開課程庫"],
+    ["/learn", "我的班級課程"],
+    ["/admin/courses", "公開課程審核"],
+    ["/admin/storage", "Cloudflare 檔案儲存"],
+  ];
+  for (const [path, text] of cases) {
+    const response = await render(path);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), new RegExp(text));
+  }
 });
 
 test("server-renders a standalone chapter page", async () => {

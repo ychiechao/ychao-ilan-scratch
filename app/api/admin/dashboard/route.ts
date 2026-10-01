@@ -1,9 +1,10 @@
 import { ensureDb } from "../../../../db";
-import { adminError, requireAdmin } from "../_auth";
+import { requireSuperadmin } from "../../auth";
+import { referenceStorageStatus } from "../../reference-storage";
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin(request);
-  if (!admin) return adminError();
+  const admin = await requireSuperadmin(request);
+  if (admin instanceof Response) return admin;
   const db = await ensureDb();
 
   const teachers = await db
@@ -22,5 +23,5 @@ export async function GET(request: Request) {
     )
     .all();
 
-  return Response.json({ teachers: teachers.results ?? [], classes: classes.results ?? [] });
+  return Response.json({ teachers: teachers.results ?? [], classes: classes.results ?? [], fileStorage: referenceStorageStatus() });
 }

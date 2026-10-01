@@ -5,6 +5,7 @@ export const teachers = sqliteTable("teachers", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  firebaseUid: text("firebase_uid"),
   pinHash: text("pin_hash").notNull(),
   role: text("role").notNull().default("teacher"),
   status: text("status").notNull().default("pending"),
@@ -12,6 +13,7 @@ export const teachers = sqliteTable("teachers", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("teachers_email_idx").on(table.email),
+  uniqueIndex("teachers_firebase_uid_idx").on(table.firebaseUid),
 ]);
 
 export const classes = sqliteTable("classes", {
@@ -34,11 +36,131 @@ export const students = sqliteTable("students", {
   seatNo: text("seat_no").notNull(),
   nickname: text("nickname").notNull(),
   email: text("email"),
+  firebaseUid: text("firebase_uid"),
   pinHash: text("pin_hash").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("students_class_seat_idx").on(table.classId, table.seatNo),
   uniqueIndex("students_email_idx").on(table.email),
+  uniqueIndex("students_firebase_uid_idx").on(table.firebaseUid),
+]);
+
+export const courses = sqliteTable("courses", {
+  id: text("id").primaryKey(),
+  ownerTeacherId: text("owner_teacher_id").notNull().references(() => teachers.id),
+  title: text("title").notNull(),
+  summary: text("summary").notNull().default(""),
+  schoolYear: text("school_year").notNull().default(""),
+  region: text("region").notNull().default(""),
+  educationStage: text("education_stage").notNull().default(""),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  status: text("status").notNull().default("draft"),
+  currentVersionId: text("current_version_id"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const courseVersions = sqliteTable("course_versions", {
+  id: text("id").primaryKey(),
+  courseId: text("course_id").notNull().references(() => courses.id),
+  versionNo: integer("version_no").notNull(),
+  status: text("status").notNull().default("draft"),
+  changelog: text("changelog").notNull().default(""),
+  previewConfirmed: integer("preview_confirmed").notNull().default(0),
+  publishedAt: text("published_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("course_versions_number_idx").on(table.courseId, table.versionNo),
+]);
+
+export const lessons = sqliteTable("lessons", {
+  id: text("id").primaryKey(),
+  courseVersionId: text("course_version_id").notNull().references(() => courseVersions.id),
+  title: text("title").notNull(),
+  objective: text("objective").notNull().default(""),
+  description: text("description").notNull().default(""),
+  badgeName: text("badge_name").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const fileAssets = sqliteTable("file_assets", {
+  id: text("id").primaryKey(),
+  ownerTeacherId: text("owner_teacher_id").notNull().references(() => teachers.id),
+  r2Key: text("r2_key").notNull(),
+  storageProvider: text("storage_provider").notNull().default("cloudflare_kv"),
+  providerFileId: text("provider_file_id"),
+  sha256: text("sha256").notNull(),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull().default("application/x.scratch.sb3"),
+  fileSize: integer("file_size").notNull(),
+  purpose: text("purpose").notNull().default("reference"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("file_assets_owner_hash_idx").on(table.ownerTeacherId, table.sha256),
+]);
+
+export const questions = sqliteTable("questions", {
+  id: text("id").primaryKey(),
+  lessonId: text("lesson_id").notNull().references(() => lessons.id),
+  title: text("title").notNull(),
+  prompt: text("prompt").notNull().default(""),
+  difficulty: text("difficulty").notNull().default("beginner"),
+  estimatedMinutes: integer("estimated_minutes").notNull().default(20),
+  sortOrder: integer("sort_order").notNull().default(0),
+  required: integer("required").notNull().default(1),
+  referenceAssetId: text("reference_asset_id").references(() => fileAssets.id),
+  analysisJson: text("analysis_json").notNull().default("{}"),
+});
+
+export const rubricRules = sqliteTable("rubric_rules", {
+  id: text("id").primaryKey(),
+  questionId: text("question_id").notNull().references(() => questions.id),
+  label: text("label").notNull(),
+  mode: text("mode").notNull().default("automatic"),
+  scope: text("scope").notNull().default("any_sprite"),
+  type: text("type").notNull(),
+  configJson: text("config_json").notNull().default("{}"),
+  required: integer("required").notNull().default(1),
+  weight: integer("weight").notNull().default(0),
+  passFeedback: text("pass_feedback").notNull().default(""),
+  failFeedback: text("fail_feedback").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const courseReviews = sqliteTable("course_reviews", {
+  id: text("id").primaryKey(),
+  courseVersionId: text("course_version_id").notNull().references(() => courseVersions.id),
+  reviewerId: text("reviewer_id").references(() => teachers.id),
+  status: text("status").notNull(),
+  comment: text("comment").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const classCourses = sqliteTable("class_courses", {
+  id: text("id").primaryKey(),
+  classId: text("class_id").notNull().references(() => classes.id),
+  courseVersionId: text("course_version_id").notNull().references(() => courseVersions.id),
+  sortOrder: integer("sort_order").notNull().default(0),
+  status: text("status").notNull().default("active"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("class_courses_version_idx").on(table.classId, table.courseVersionId),
+]);
+
+export const questionResults = sqliteTable("question_results", {
+  id: text("id").primaryKey(),
+  studentId: text("student_id").notNull().references(() => students.id),
+  questionId: text("question_id").notNull().references(() => questions.id),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size").notNull(),
+  analysisJson: text("analysis_json").notNull(),
+  resultsJson: text("results_json").notNull(),
+  score: integer("score").notNull(),
+  status: text("status").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("question_results_student_question_idx").on(table.studentId, table.questionId),
 ]);
 
 export const submissions = sqliteTable("submissions", {

@@ -1,5 +1,6 @@
 import { cleanText, createId, generateClassCode, jsonError, publicClass } from "../_lib";
 import { ensureDb } from "../../../db";
+import { requireTeacher } from "../auth";
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
@@ -7,12 +8,10 @@ export async function POST(request: Request) {
     name?: string;
   } | null;
 
-  const teacherId = cleanText(payload?.teacherId, 80);
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
   const name = cleanText(payload?.name) || "Scratch 基礎班";
-
-  if (!teacherId) {
-    return jsonError("缺少老師資料，請重新登入。");
-  }
 
   const db = await ensureDb();
   const teacher = await db
@@ -52,12 +51,14 @@ export async function PATCH(request: Request) {
     submissionLabel?: string;
   } | null;
 
-  const teacherId = cleanText(payload?.teacherId, 80);
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
   const classId = cleanText(payload?.classId, 80);
   const submissionUrl = cleanText(payload?.submissionUrl, 500);
   const submissionLabel = cleanText(payload?.submissionLabel, 40) || "作品繳交連結";
 
-  if (!teacherId || !classId) {
+  if (!classId) {
     return jsonError("缺少老師或班級資料。");
   }
 

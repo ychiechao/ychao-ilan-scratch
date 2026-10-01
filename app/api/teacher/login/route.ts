@@ -1,18 +1,20 @@
-import { cleanText, hashPin, jsonError, publicClass } from "../../_lib";
+import { cleanText, jsonError, publicClass } from "../../_lib";
 import { ensureDb } from "../../../../db";
+import { FirebaseAuthError, verifyFirebaseIdToken } from "../../firebase-auth";
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
-    email?: string;
-    pin?: string;
+    idToken?: string;
   } | null;
 
-  const email = cleanText(payload?.email, 120).toLowerCase();
-  const pin = cleanText(payload?.pin, 12);
-
-  if (!email || pin.length < 4) {
-    return jsonError("請輸入 Email 與 PIN。");
+  let firebaseUser;
+  try {
+    firebaseUser = await verifyFirebaseIdToken(cleanText(payload?.idToken, 4096));
+  } catch (error) {
+    if (error instanceof FirebaseAuthError) return jsonError(error.message, error.status);
+    return jsonError("Google 登入驗證失敗。", 401);
   }
+  const email = firebaseUser.email.toLowerCase();
 
   const db = await ensureDb();
   const teacher = await db
@@ -20,9 +22,11 @@ export async function POST(request: Request) {
     .bind(email)
     .first<{ id: string; name: string; email: string; pin_hash: string; role: string; status: string; must_change_pin: number }>();
 
-  if (!teacher || teacher.pin_hash !== (await hashPin(email, pin))) {
-    return jsonError("Email 或 PIN 不正確。", 401);
+  if (!teacher) {
+    return jsonError("這個 Google 帳號尚未註冊老師身分。", 401);
   }
+  await db.prepare("UPDATE teachers SET firebase_uid = ? WHERE id = ?")
+    .bind(firebaseUser.localId, teacher.id).run();
 
   const classes = await db
     .prepare("SELECT * FROM classes WHERE teacher_id = ? ORDER BY created_at DESC")

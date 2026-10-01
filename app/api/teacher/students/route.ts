@@ -1,5 +1,6 @@
 import { ensureDb } from "../../../../db";
 import { cleanText, createId, hashPin, isValidEmail, jsonError, normalizeEmail } from "../../_lib";
+import { requireTeacher } from "../../auth";
 
 async function ownedActiveClass(db: D1Database, teacherId: string, classId: string) {
   return db
@@ -13,22 +14,28 @@ async function ownedActiveClass(db: D1Database, teacherId: string, classId: stri
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
-    teacherId?: string; classId?: string; seatNo?: string; nickname?: string; email?: string; pin?: string;
+    teacherId?: string; classId?: string; seatNo?: string; nickname?: string; email?: string;
   } | null;
-  const teacherId = cleanText(payload?.teacherId, 80);
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
   const classId = cleanText(payload?.classId, 80);
   const seatNo = cleanText(payload?.seatNo, 10);
   const nickname = cleanText(payload?.nickname, 40);
   const email = normalizeEmail(payload?.email);
-  const pin = cleanText(payload?.pin, 12);
-  if (!teacherId || !classId || !seatNo || !nickname || !isValidEmail(email) || pin.length < 4) return jsonError("請輸入座號、暱稱、正確的 Email 與至少 4 碼 PIN。");
+  if (!teacherId || !classId || !seatNo || !nickname || !isValidEmail(email)) return jsonError("請輸入座號、暱稱與正確的 Google Email。");
 
   const db = await ensureDb();
   if (!(await ownedActiveClass(db, teacherId, classId))) return jsonError("班級尚未啟用，或你沒有這個班級的管理權。", 403);
+  const duplicate = await db
+    .prepare("SELECT id FROM students WHERE email = ? OR (class_id = ? AND seat_no = ?)")
+    .bind(email, classId, seatNo)
+    .first();
+  if (duplicate) return jsonError("這個座號或 Email 已經存在。");
   try {
     await db
       .prepare("INSERT INTO students (id, class_id, seat_no, nickname, email, pin_hash) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(createId("stu"), classId, seatNo, nickname, email, await hashPin(`${classId}:${seatNo}`, pin))
+      .bind(createId("stu"), classId, seatNo, nickname, email, await hashPin(`${classId}:${seatNo}`, `google:${email}`))
       .run();
   } catch {
     return jsonError("這個座號或 Email 已經存在。");
@@ -38,23 +45,32 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
-    teacherId?: string; classId?: string; studentId?: string; seatNo?: string; nickname?: string; email?: string; pin?: string;
+    action?: string; teacherId?: string; classId?: string; studentId?: string; seatNo?: string; nickname?: string; email?: string;
   } | null;
-  const teacherId = cleanText(payload?.teacherId, 80);
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
   const classId = cleanText(payload?.classId, 80);
   const studentId = cleanText(payload?.studentId, 80);
   const seatNo = cleanText(payload?.seatNo, 10);
   const nickname = cleanText(payload?.nickname, 40);
   const email = normalizeEmail(payload?.email);
-  const pin = cleanText(payload?.pin, 12);
-  if (!teacherId || !classId || !studentId || !seatNo || !nickname || !isValidEmail(email) || pin.length < 4) return jsonError("編輯學生時請一併設定 Email 與至少 4 碼的新 PIN。");
+  if (!teacherId || !classId || !studentId) return jsonError("缺少學生資料。");
 
   const db = await ensureDb();
   if (!(await ownedActiveClass(db, teacherId, classId))) return jsonError("無這個班級的管理權。", 403);
+  const current = await db
+    .prepare("SELECT email FROM students WHERE id = ? AND class_id = ?")
+    .bind(studentId, classId)
+    .first<{ email: string }>();
+  if (!current) return jsonError("找不到學生。", 404);
+
+  if (!seatNo || !nickname || !isValidEmail(email)) return jsonError("請輸入座號、暱稱與正確的 Email。");
+  if (email !== current.email) return jsonError("Firebase 登入 Email 不能由老師變更，請讓學生重新建立帳號。");
   try {
     const result = await db
-      .prepare("UPDATE students SET seat_no = ?, nickname = ?, email = ?, pin_hash = ? WHERE id = ? AND class_id = ?")
-      .bind(seatNo, nickname, email, await hashPin(`${classId}:${seatNo}`, pin), studentId, classId)
+      .prepare("UPDATE students SET seat_no = ?, nickname = ? WHERE id = ? AND class_id = ?")
+      .bind(seatNo, nickname, studentId, classId)
       .run();
     if (!result.meta.changes) return jsonError("找不到學生。", 404);
   } catch {
@@ -65,7 +81,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   const payload = (await request.json().catch(() => null)) as { teacherId?: string; classId?: string; studentId?: string } | null;
-  const teacherId = cleanText(payload?.teacherId, 80);
+  const actor = await requireTeacher(request);
+  if (actor instanceof Response) return actor;
+  const teacherId = actor.teacher.id;
   const classId = cleanText(payload?.classId, 80);
   const studentId = cleanText(payload?.studentId, 80);
   const db = await ensureDb();

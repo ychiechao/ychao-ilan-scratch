@@ -1,0 +1,4 @@
+FIREBASE_PROJECT_ID=ychao-booking-schedule
+FIREBASE_WEB_API_KEY=replace_with_your_firebase_web_api_key
+REFERENCE_STORAGE_URL=https://yilan-scratch-course.ychao-ilc.workers.dev
+REFERENCE_STORAGE_SECRET=replace_with_a_random_secret_at_least_32_characters_long
