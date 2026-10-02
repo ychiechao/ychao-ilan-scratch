@@ -1,10 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import Link from "next/link";
-import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../firebase-client";
-import { CourseMapBackButton } from "../HardNavigationLink";
+import { authorizedFetch, firebaseAuth } from "../firebase-client";
 
 type LibraryCourse = {
   id: string; title: string; summary: string; school_year: string; region: string;
@@ -34,40 +32,35 @@ async function json<T>(response: Response): Promise<T> {
   return data as T;
 }
 
+function libraryFetch(path: string, authenticated: boolean) {
+  return authenticated ? authorizedFetch(path) : fetch(path);
+}
+
 export function CourseLibrary() {
   const [courses, setCourses] = useState<LibraryCourse[]>([]);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [adoptions, setAdoptions] = useState<Adoption[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [query, setQuery] = useState("");
-  const [message, setMessage] = useState("請先使用 Google 帳號登入瀏覽課程。");
+  const [message, setMessage] = useState("正在載入公開課程…");
   const [canAdopt, setCanAdopt] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
 
-  async function load(q = "") {
+  const load = useCallback(async (q = "", authenticated = Boolean(firebaseAuth.currentUser)) => {
     const data = await json<{ courses: LibraryCourse[]; classes: ClassInfo[]; adoptions: Adoption[]; canAdopt: boolean }>(
-      await authorizedFetch(`/api/library?q=${encodeURIComponent(q)}`),
+      await libraryFetch(`/api/library?q=${encodeURIComponent(q)}`, authenticated),
     );
     setCourses(data.courses);
     setClasses(data.classes);
     setAdoptions(data.adoptions);
     setCanAdopt(data.canAdopt);
-    setSignedIn(true);
     setMessage(`共 ${data.courses.length} 門已發布課程。`);
-  }
+  }, []);
 
   useEffect(() => onAuthStateChanged(firebaseAuth, (user) => {
-    if (user) void load().catch(() => setSignedIn(false));
-  }), []);
-
-  async function login() {
-    try {
-      await signInWithGoogle();
-      await load();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "登入失敗。");
-    }
-  }
+    void load("", Boolean(user)).catch((error) => {
+      setMessage(error instanceof Error ? error.message : "公開課程載入失敗。");
+    });
+  }), [load]);
 
   async function search(event: FormEvent) {
     event.preventDefault();
@@ -80,7 +73,7 @@ export function CourseLibrary() {
 
   async function open(id: string) {
     try {
-      const data = await json<{ course: Detail }>(await authorizedFetch(`/api/library?id=${encodeURIComponent(id)}`));
+      const data = await json<{ course: Detail }>(await libraryFetch(`/api/library?id=${encodeURIComponent(id)}`, Boolean(firebaseAuth.currentUser)));
       setDetail(data.course);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "讀取失敗。");
@@ -124,23 +117,16 @@ export function CourseLibrary() {
     <main className="library-shell">
       <header className="library-header">
         <div>
-          <CourseMapBackButton>← 回課程地圖</CourseMapBackButton>
           <p className="eyebrow">Public Course Library</p>
           <h1>Scratch 公開課程庫</h1>
           <p>所有課程皆經管理員審核；班級採用後固定使用當時版本。</p>
         </div>
-        <div>
-          {!signedIn && <button onClick={login}>Google 登入</button>}
-          <Link href="/studio">前往課程設計室</Link>
-        </div>
       </header>
       <div className="studio-message">{message}</div>
-      {signedIn && (
-        <form className="library-search" onSubmit={search}>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋課程名稱、摘要或標籤" />
-          <button>搜尋</button>
-        </form>
-      )}
+      <form className="library-search" onSubmit={search}>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋課程名稱、摘要或標籤" />
+        <button>搜尋</button>
+      </form>
       <div className="library-layout">
         <section className="library-grid">
           {courses.map((course) => {

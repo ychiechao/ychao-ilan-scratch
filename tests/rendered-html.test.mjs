@@ -22,33 +22,37 @@ async function render(path = "/") {
   );
 }
 
-test("server-renders the course platform shell", async () => {
+test("server-renders the public course library as the homepage", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>宜蘭 Scratch 基礎課程<\/title>/i);
-  assert.match(html, /學生入口/);
-  assert.match(html, /已加入學生登入/);
-  assert.match(html, /第一次加入班級/);
-  assert.match(html, /登入課程/);
-  assert.match(html, /使用 Google 登入課程/);
-  assert.doesNotMatch(html, /name="pin"|Firebase 密碼/);
-  assert.match(html, /老師後台/);
+  assert.match(html, /<title>Scratch 公開課程庫｜宜蘭 Scratch<\/title>/i);
+  assert.match(html, /Scratch 公開課程庫/);
+  assert.match(html, /搜尋課程名稱、摘要或標籤/);
+  assert.doesNotMatch(html, /回課程地圖/);
+  assert.doesNotMatch(html, /前往課程設計室/);
+});
+
+test("server-renders the legacy course platform by mode", async () => {
+  const response = await render("/?mode=map");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
   assert.match(html, /課程地圖/);
-  assert.match(html, /公開課程庫/);
-  assert.match(html, /課程設計室/);
-  assert.match(html, /我的班級課程/);
+  assert.match(html, /Scratch 基本環境/);
+  assert.match(html, /完整專題：防疫大作戰/);
   assert.match(html, /aria-label="回到課程地圖"[^>]*>\s*宜蘭 Scratch 基礎課程/);
+  assert.doesNotMatch(html, /class="hero__actions"/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
 
 test("server-renders the new course platform entry pages", async () => {
   const cases = [
-    ["/studio", "Scratch 課程設計室", "/?mode=map", "課程地圖"],
-    ["/library", "Scratch 公開課程庫", "/?mode=map", "課程地圖"],
-    ["/learn", "我的班級課程", "/?mode=map", "課程地圖"],
+    ["/studio", "Scratch 課程設計室", "/", "首頁"],
+    ["/library", "Scratch 公開課程庫", null, null],
+    ["/learn", "我的班級課程", "/", "首頁"],
     ["/admin/courses", "課程包審核與發布", "/?mode=admin", "超管後台"],
     ["/admin/storage", "Cloudflare 檔案儲存", "/?mode=admin", "超管後台"],
   ];
@@ -57,12 +61,13 @@ test("server-renders the new course platform entry pages", async () => {
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, new RegExp(text));
-    if (backHref === "/?mode=map") {
+    if (backHref === "/") {
       assert.match(html, /<form class="hard-navigation-form" action="\/" method="get">/);
-      assert.match(html, /<input type="hidden" name="mode" value="map"/);
       assert.match(html, new RegExp(`<button type="submit">← 回${backLabel}<\\/button>`));
-    } else {
+    } else if (backHref) {
       assert.match(html, new RegExp(`<a href="${backHref.replace("?", "\\?")}">← 回${backLabel}<\\/a>`));
+    } else {
+      assert.doesNotMatch(html, /hard-navigation-form/);
     }
     if (path === "/studio") assert.match(html, /加入宜蘭 Scratch 12 堂範本/);
   }

@@ -5,7 +5,7 @@ import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
 import { authorizedFetch, signInWithGoogle, signOutFirebase } from "./firebase-client";
 
-type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
+export type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
 
 type Teacher = {
   id: string;
@@ -229,8 +229,8 @@ function readStored<T>(key: string): T | null {
   }
 }
 
-export function CourseApp() {
-  const [mode, setMode] = useState<AppMode>(initialMode);
+export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } = {}) {
+  const [mode, setMode] = useState<AppMode>(() => initialModeValue ?? initialMode());
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(() => readStored("scratch-teacher"));
@@ -775,23 +775,6 @@ export function CourseApp() {
           <p className="hero__copy">
             12 堂射擊遊戲課程，學生在裝置上完成自我檢核，老師以自選雲端收件並掌握進度。
           </p>
-          <div className="hero__actions">
-            <a className="hero-link" href="/library">公開課程庫</a>
-            <a className="hero-link" href="/learn">我的班級課程</a>
-            <a className="hero-link" href="/studio">課程設計室</a>
-            <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>
-              學生入口
-            </button>
-            <button onClick={() => setMode("teacher")} className={mode === "teacher" ? "active" : ""}>
-              老師後台
-            </button>
-            <button onClick={() => setMode("admin")} className={mode === "admin" ? "active" : ""}>
-              超管後台
-            </button>
-            <button onClick={() => setMode("map")} className={mode === "map" ? "active" : ""}>
-              課程地圖
-            </button>
-          </div>
         </div>
         <div className="hero__board" aria-label="課程進度總覽">
           <div>

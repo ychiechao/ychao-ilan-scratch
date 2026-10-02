@@ -4,7 +4,8 @@ import { cleanText, createId, jsonError } from "../_lib";
 import { ensureOfficialSeedCourse, loadCourse } from "../courses/_shared";
 
 export async function GET(request: Request) {
-  const actor = await requireActor(request);
+  const hasAuthorization = (request.headers.get("authorization") ?? "").startsWith("Bearer ");
+  const actor = hasAuthorization ? await requireActor(request) : null;
   if (actor instanceof Response) return actor;
   await ensureOfficialSeedCourse();
   const url = new URL(request.url);
@@ -13,11 +14,11 @@ export async function GET(request: Request) {
     const course = await loadCourse(courseId, true);
     if (!course) return jsonError("找不到已發布課程。", 404);
     const db = await ensureDb();
-    const adoption = actor.teacher ? await db.prepare(
+    const adoption = actor?.teacher ? await db.prepare(
       `SELECT cc.id FROM class_courses cc JOIN classes cl ON cl.id = cc.class_id
        WHERE cc.course_version_id = ? AND cl.teacher_id = ? AND cc.status = 'active' LIMIT 1`
     ).bind(course.version.id, actor.teacher.id).first() : null;
-    const canSeeReference = actor.teacher?.role === "superadmin" || course.ownerTeacherId === actor.teacher?.id || Boolean(adoption);
+    const canSeeReference = actor?.teacher?.role === "superadmin" || course.ownerTeacherId === actor?.teacher?.id || Boolean(adoption);
     return Response.json({ course: hideReferenceFiles(course, canSeeReference) });
   }
   const search = cleanText(url.searchParams.get("q"), 80);
@@ -36,10 +37,10 @@ export async function GET(request: Request) {
        ))
        AND (? = '' OR c.title LIKE ? OR c.summary LIKE ? OR c.tags_json LIKE ?)
      ORDER BY cv.published_at DESC, c.title`
-  ).bind(actor.teacher?.role === "superadmin" ? 1 : 0, actor.teacher?.id ?? "", search, `%${search}%`, `%${search}%`, `%${search}%`).all();
+  ).bind(!actor?.teacher || actor.teacher.role === "superadmin" ? 1 : 0, actor?.teacher?.id ?? "", search, `%${search}%`, `%${search}%`, `%${search}%`).all();
   let classes: unknown[] = [];
   let adoptions: unknown[] = [];
-  if (actor.teacher?.status === "active") {
+  if (actor?.teacher?.status === "active") {
     classes = (await db.prepare("SELECT id, name, code, status FROM classes WHERE teacher_id = ? AND status = 'active' ORDER BY created_at DESC").bind(actor.teacher.id).all()).results ?? [];
     adoptions = (await db.prepare(
       `SELECT cc.id, cc.class_id, cl.name AS class_name, cc.course_version_id, cc.status, cc.sort_order,
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
        JOIN course_versions latest ON latest.id = c.current_version_id WHERE cl.teacher_id = ?`
     ).bind(actor.teacher.id).all()).results ?? [];
   }
-  return Response.json({ courses: rows.results ?? [], classes, adoptions, canAdopt: actor.teacher?.status === "active" });
+  return Response.json({ courses: rows.results ?? [], classes, adoptions, canAdopt: actor?.teacher?.status === "active" });
 }
 
 export async function POST(request: Request) {

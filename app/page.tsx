@@ -1,11 +1,20 @@
 import type { Metadata } from "next";
-import { CourseApp } from "./CourseApp";
+import { CourseApp, type AppMode } from "./CourseApp";
+import { CourseLibrary } from "./library/CourseLibrary";
 
 export const metadata: Metadata = {
-  title: "宜蘭 Scratch 基礎課程",
-  description: "老師開班並設定雲端收件連結，學生完成 .sb3 自我檢核與章節徽章。",
+  title: "Scratch 公開課程庫｜宜蘭 Scratch",
+  description: "瀏覽宜蘭 Scratch 公開課程，查看章節、學習目標與自我檢核內容。",
 };
 
-export default function Home() {
-  return <CourseApp />;
+type HomeProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+const legacyModes = new Set<AppMode>(["student", "teacher", "admin", "map", "chapter"]);
+
+export default async function Home({ searchParams }: HomeProps) {
+  const params = await searchParams;
+  const mode = typeof params.mode === "string" ? params.mode : "";
+  return legacyModes.has(mode as AppMode) ? <CourseApp initialModeValue={mode as AppMode} /> : <CourseLibrary />;
 }
