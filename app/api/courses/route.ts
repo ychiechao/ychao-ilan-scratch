@@ -2,6 +2,7 @@ import { ensureDb } from "../../../db";
 import { requireTeacher } from "../auth";
 import { cleanText, createId, jsonError } from "../_lib";
 import { ensureOfficialSeedCourse, loadCourse, type CourseLessonInput, validateDraft } from "./_shared";
+import { chapters } from "../../course-data";
 
 export async function GET(request: Request) {
   const actor = await requireTeacher(request);
@@ -28,9 +29,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const actor = await requireTeacher(request);
   if (actor instanceof Response) return actor;
-  const payload = await request.json().catch(() => null) as { title?: string; summary?: string } | null;
-  const title = cleanText(payload?.title, 120) || "未命名 Scratch 課程";
-  const summary = cleanText(payload?.summary, 600);
+  const payload = await request.json().catch(() => null) as { title?: string; summary?: string; template?: string } | null;
+  const isOfficialTemplate = payload?.template === "yilan_scratch_12";
+  const title = isOfficialTemplate ? "宜蘭 Scratch 12 堂課（課程範本）" : cleanText(payload?.title, 120) || "未命名 Scratch 課程";
+  const summary = isOfficialTemplate
+    ? "從 Scratch 基本操作、角色移動到射擊遊戲專題的十二堂漸進式課程；共 14 支教學影片與 14 份參考作品欄位。"
+    : cleanText(payload?.summary, 600);
   const courseId = createId("course");
   const versionId = createId("version");
   const db = await ensureDb();
@@ -40,6 +44,7 @@ export async function POST(request: Request) {
     db.prepare(`INSERT INTO course_versions (id, course_id, version_no, status)
       VALUES (?, ?, 1, 'draft')`).bind(versionId, courseId),
   ]);
+  if (isOfficialTemplate) await insertOfficialTemplate(db, versionId);
   return Response.json({ course: await loadCourse(courseId) }, { status: 201 });
 }
 
@@ -155,6 +160,57 @@ function clamp(value: unknown, minimum: number, maximum: number) {
 }
 function allowedDifficulty(value: unknown) { return ["beginner", "intermediate", "advanced"].includes(String(value)) ? String(value) : "beginner"; }
 function allowedMode(value: unknown) { return ["automatic", "manual", "hybrid"].includes(String(value)) ? String(value) : "automatic"; }
+
+const templateReferenceFiles: Record<string, string> = {
+  "1:default": "01-Scratch基本環境.sb3",
+  "2:default": "11508-70001-02.sb3",
+  "3:glide": "11508-70001-03.sb3",
+  "3:coordinates": "11508-70001-03-02.sb3",
+  "4:default": "11508-70001-05.sb3",
+  "5:default": "11508-70001-06.sb3",
+  "6:default": "11508-70001-07.sb3",
+  "7:default": "11508-70001-08.sb3",
+  "8:default": "11508-70001-09.sb3",
+  "9:default": "11508-70001-10.sb3",
+  "10:broadcast": "11508-70001-11.sb3",
+  "10:direct": "11508-70001-12.sb3",
+  "11:default": "11508-70001-13.sb3",
+  "12:default": "14-防疫大作戰完整專題.sb3",
+};
+
+async function insertOfficialTemplate(db: D1Database, versionId: string) {
+  const statements: D1PreparedStatement[] = [];
+  chapters.forEach((chapter, lessonIndex) => {
+    const lessonId = createId("lesson");
+    const description = `${chapter.overview}\n\n課程重點：\n${chapter.lessonPoints.map((point) => `- ${point}`).join("\n")}`;
+    statements.push(db.prepare(`INSERT INTO lessons
+      (id, course_version_id, title, objective, description, badge_name, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .bind(lessonId, versionId, chapter.title, chapter.objective, description, chapter.badge, lessonIndex));
+    const tasks = chapter.submissionTasks?.length
+      ? chapter.submissionTasks
+      : [{ id: "default", title: chapter.title, videoTitle: chapter.videoTitles[0], description: chapter.objective, checkIds: chapter.checks.map((item) => item.id) }];
+    tasks.forEach((task, taskIndex) => {
+      const questionId = createId("question");
+      const videoId = chapter.videoIds[taskIndex] ?? chapter.videoIds[0];
+      const videoTitle = chapter.videoTitles[taskIndex] ?? task.videoTitle;
+      const referenceFile = templateReferenceFiles[`${chapter.no}:${task.id}`] ?? `${String(chapter.no).padStart(2, "0")}-${task.id}.sb3`;
+      const prompt = `${task.description}\n\n教學影片：${videoTitle}\nhttps://www.youtube.com/watch?v=${videoId}\n\n建議範例檔名：${referenceFile}`;
+      statements.push(db.prepare(`INSERT INTO questions
+        (id, lesson_id, title, prompt, difficulty, estimated_minutes, sort_order, required, analysis_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, '{}')`)
+        .bind(questionId, lessonId, task.title, prompt, chapter.no >= 8 ? "intermediate" : "beginner", chapter.no === 12 ? 60 : 30, taskIndex));
+      const checks = chapter.checks.filter((check) => task.checkIds.includes(check.id));
+      checks.forEach((check, checkIndex) => {
+        statements.push(db.prepare(`INSERT INTO rubric_rules
+          (id, question_id, label, mode, scope, type, config_json, required, weight, pass_feedback, fail_feedback, sort_order)
+          VALUES (?, ?, ?, 'manual', 'project', 'manual_review', ?, 1, 0, '已完成此項功能。', '請依章節目標修正作品。', ?)`)
+          .bind(createId("rule"), questionId, check.label, JSON.stringify({ chapterNo: chapter.no, task: task.id, expectedReferenceFile: referenceFile }), checkIndex));
+      });
+    });
+  });
+  await db.batch(statements);
+}
 
 async function cloneVersion(db: D1Database, sourceVersionId: string, targetVersionId: string) {
   const lessons = await db.prepare("SELECT * FROM lessons WHERE course_version_id = ? ORDER BY sort_order").bind(sourceVersionId).all<Record<string, unknown>>();

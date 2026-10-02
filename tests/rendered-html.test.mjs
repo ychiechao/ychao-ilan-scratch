@@ -58,6 +58,7 @@ test("server-renders the new course platform entry pages", async () => {
     const html = await response.text();
     assert.match(html, new RegExp(text));
     assert.match(html, new RegExp(`<a href="${backHref.replace("?", "\\?")}">← 回${backHref === "/" ? "首頁" : "超管後台"}<\\/a>`));
+    if (path === "/studio") assert.match(html, /加入宜蘭 Scratch 12 堂範本/);
   }
 });
 

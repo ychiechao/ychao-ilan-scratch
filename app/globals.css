@@ -1895,6 +1895,7 @@ td:first-child span {
 .studio-sidebar button span { display: block; }
 .studio-sidebar button span { font-size: .78rem; font-weight: 600; margin-top: 4px; opacity: .75; }
 .studio-sidebar button.selected { background: var(--green); color: white; }
+.studio-sidebar .template-button { background: #e8f3ed; border: 1px solid #9bc8ad; color: var(--ink); }
 .studio-workspace { display: grid; gap: 16px; min-width: 0; }
 .studio-empty,
 .studio-card,

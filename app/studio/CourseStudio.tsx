@@ -67,6 +67,20 @@ export function CourseStudio() {
     finally { setBusy(false); }
   }
 
+  async function createOfficialTemplate() {
+    setBusy(true);
+    try {
+      const data = await json<{ course: CourseDraft }>(await authorizedFetch("/api/courses", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ template: "yilan_scratch_12" }),
+      }));
+      setCourse(data.course);
+      await loadCourses();
+      setMessage("已加入 12 堂課程範本。章節、功能說明、14 支影片與建議範例檔名已填入；請逐題上傳參考 .sb3。");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "無法加入課程範本。"); }
+    finally { setBusy(false); }
+  }
+
   async function save(value = course, quiet = false) {
     if (!value) return null;
     const data = await json<{ course: CourseDraft }>(await authorizedFetch("/api/courses", {
@@ -82,7 +96,7 @@ export function CourseStudio() {
     setBusy(true);
     try {
       const analysis = await inspectScratchProject(file);
-      const next = { ...course, version: { ...course.version, previewConfirmed: false }, lessons: course.lessons.map((lesson) => lesson.id !== lessonId ? lesson : ({ ...lesson, questions: lesson.questions.map((question) => question.id !== questionId ? question : ({ ...question, analysis, rules: suggestRubricRules(analysis), referenceFileName: file.name })) })) };
+      const next = { ...course, version: { ...course.version, previewConfirmed: false }, lessons: course.lessons.map((lesson) => lesson.id !== lessonId ? lesson : ({ ...lesson, questions: lesson.questions.map((question) => question.id !== questionId ? question : ({ ...question, analysis, rules: [...suggestRubricRules(analysis), ...question.rules.filter((rule) => rule.type === "manual_review").map((rule) => ({ ...rule, mode: "manual" as const, weight: 0 }))], referenceFileName: file.name })) })) };
       setCourse(next);
       await save(next, true);
       await json(await authorizedFetch(`/api/course-files?questionId=${encodeURIComponent(questionId)}&fileName=${encodeURIComponent(file.name)}&sha256=${analysis.sha256}`, { method: "PUT", headers: { "content-type": "application/x.scratch.sb3", "content-length": String(file.size) }, body: file }));
@@ -221,7 +235,7 @@ export function CourseStudio() {
     <header className="studio-header"><div><Link href="/">← 回首頁</Link><p className="eyebrow">Course Studio</p><h1>Scratch 課程設計室</h1><p>從參考作品產生可編輯、可重現的檢核規則。</p></div><div className="studio-header__actions">{!signedIn && <button onClick={login} disabled={busy}>教師 Google 登入</button>}<Link href="/library">公開課程庫</Link><label className="button-label">匯入課程 ZIP<input type="file" accept=".zip" onChange={importCourse} hidden /></label></div></header>
     <div className="studio-message">{message}</div>
     <div className="studio-layout">
-      <aside className="studio-sidebar"><button onClick={createCourse} disabled={!signedIn || busy}>＋ 建立課程</button>{courses.map((item) => <button className={course?.id === item.id ? "selected" : ""} key={item.id} onClick={() => void loadCourse(item.id)}><strong>{item.title}</strong><span>v{item.version_no} · {item.version_status} · {item.lesson_count} 堂</span></button>)}</aside>
+      <aside className="studio-sidebar"><button onClick={createCourse} disabled={!signedIn || busy}>＋ 建立空白課程</button><button className="template-button" onClick={createOfficialTemplate} disabled={!signedIn || busy}>加入宜蘭 Scratch 12 堂範本</button>{courses.map((item) => <button className={course?.id === item.id ? "selected" : ""} key={item.id} onClick={() => void loadCourse(item.id)}><strong>{item.title}</strong><span>v{item.version_no} · {item.version_status} · {item.lesson_count} 堂</span></button>)}</aside>
       <section className="studio-workspace">{!course ? <div className="studio-empty"><h2>選擇或建立課程</h2><p>課程會先保存為私人草稿，完成預覽後才能送審。</p></div> : <>
         <div className="studio-toolbar"><div><span>版本 {course.version.versionNo}</span><strong>{course.version.status}</strong></div><button onClick={() => void save()} disabled={!editable || busy}>儲存草稿</button><button onClick={preview} disabled={!editable || busy}>學生預覽檢核</button><button onClick={exportCourse} disabled={busy}>匯出 ZIP</button>{course.version.status === "published" && <button onClick={newVersion} disabled={busy}>建立新版</button>}<button onClick={submit} disabled={!editable || !course.version.previewConfirmed || busy}>送交審核</button></div>
         <div className="studio-card form-stack"><label>課程名稱<input value={course.title} disabled={!editable} onChange={(event) => setCourse({ ...course, title: event.target.value, version: { ...course.version, previewConfirmed: false } })} /></label><label>課程摘要<textarea value={course.summary} disabled={!editable} onChange={(event) => setCourse({ ...course, summary: event.target.value, version: { ...course.version, previewConfirmed: false } })} /></label><div className="form-row"><label>學年度<input value={course.schoolYear} disabled={!editable} onChange={(event) => setCourse({ ...course, schoolYear: event.target.value })} /></label><label>地區<input value={course.region} disabled={!editable} onChange={(event) => setCourse({ ...course, region: event.target.value })} /></label><label>學習階段<input value={course.educationStage} disabled={!editable} onChange={(event) => setCourse({ ...course, educationStage: event.target.value })} /></label></div><label>標籤（逗號分隔）<input value={course.tags.join(", ")} disabled={!editable} onChange={(event) => setCourse({ ...course, tags: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} /></label><label>版本說明<input value={course.version.changelog} disabled={!editable} onChange={(event) => setCourse({ ...course, version: { ...course.version, changelog: event.target.value } })} /></label></div>
