@@ -3,6 +3,8 @@ import { requireTeacher } from "../auth";
 import { cleanText, createId, jsonError } from "../_lib";
 import { ensureOfficialSeedCourse, loadCourse, type CourseLessonInput, validateDraft } from "./_shared";
 import { chapters } from "../../course-data";
+import { suggestRubricRules, type ScratchProjectSummary } from "../../scratch-project";
+import templateReferenceData from "../../course-template-reference-data.json";
 
 export async function GET(request: Request) {
   const actor = await requireTeacher(request);
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
     db.prepare(`INSERT INTO course_versions (id, course_id, version_no, status)
       VALUES (?, ?, 1, 'draft')`).bind(versionId, courseId),
   ]);
-  if (isOfficialTemplate) await insertOfficialTemplate(db, versionId);
+  if (isOfficialTemplate) await insertOfficialTemplate(db, versionId, actor.teacher.id);
   return Response.json({ course: await loadCourse(courseId) }, { status: 201 });
 }
 
@@ -162,7 +164,7 @@ function allowedDifficulty(value: unknown) { return ["beginner", "intermediate",
 function allowedMode(value: unknown) { return ["automatic", "manual", "hybrid"].includes(String(value)) ? String(value) : "automatic"; }
 
 const templateReferenceFiles: Record<string, string> = {
-  "1:default": "01-Scratch基本環境.sb3",
+  "1:default": "11508-70001.sb3",
   "2:default": "11508-70001-02.sb3",
   "3:glide": "11508-70001-03.sb3",
   "3:coordinates": "11508-70001-03-02.sb3",
@@ -175,18 +177,31 @@ const templateReferenceFiles: Record<string, string> = {
   "10:broadcast": "11508-70001-11.sb3",
   "10:direct": "11508-70001-12.sb3",
   "11:default": "11508-70001-13.sb3",
-  "12:default": "14-防疫大作戰完整專題.sb3",
+  "12:default": "11508-70001-13.sb3",
 };
 
-async function insertOfficialTemplate(db: D1Database, versionId: string) {
-  const statements: D1PreparedStatement[] = [];
+type TemplateReference = {
+  fileName: string;
+  fileSize: number;
+  sha256: string;
+  storageKey: string;
+  analysis: ScratchProjectSummary;
+};
+
+const templateReferences = templateReferenceData.files as Record<string, TemplateReference>;
+
+async function insertOfficialTemplate(db: D1Database, versionId: string, teacherId: string) {
+  const lessonRows: SqlValue[][] = [];
+  const assetRows: SqlValue[][] = [];
+  const questionRows: SqlValue[][] = [];
+  const ruleRows: SqlValue[][] = [];
+  const existingAssets = await db.prepare("SELECT id, sha256 FROM file_assets WHERE owner_teacher_id = ?")
+    .bind(teacherId).all<{ id: string; sha256: string }>();
+  const assetByHash = new Map((existingAssets.results ?? []).map((asset) => [asset.sha256, asset.id]));
   chapters.forEach((chapter, lessonIndex) => {
     const lessonId = createId("lesson");
     const description = `${chapter.overview}\n\n課程重點：\n${chapter.lessonPoints.map((point) => `- ${point}`).join("\n")}`;
-    statements.push(db.prepare(`INSERT INTO lessons
-      (id, course_version_id, title, objective, description, badge_name, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`)
-      .bind(lessonId, versionId, chapter.title, chapter.objective, description, chapter.badge, lessonIndex));
+    lessonRows.push([lessonId, versionId, chapter.title, chapter.objective, description, chapter.badge, lessonIndex]);
     const tasks = chapter.submissionTasks?.length
       ? chapter.submissionTasks
       : [{ id: "default", title: chapter.title, videoTitle: chapter.videoTitles[0], description: chapter.objective, checkIds: chapter.checks.map((item) => item.id) }];
@@ -195,21 +210,46 @@ async function insertOfficialTemplate(db: D1Database, versionId: string) {
       const videoId = chapter.videoIds[taskIndex] ?? chapter.videoIds[0];
       const videoTitle = chapter.videoTitles[taskIndex] ?? task.videoTitle;
       const referenceFile = templateReferenceFiles[`${chapter.no}:${task.id}`] ?? `${String(chapter.no).padStart(2, "0")}-${task.id}.sb3`;
-      const prompt = `${task.description}\n\n教學影片：${videoTitle}\nhttps://www.youtube.com/watch?v=${videoId}\n\n建議範例檔名：${referenceFile}`;
-      statements.push(db.prepare(`INSERT INTO questions
-        (id, lesson_id, title, prompt, difficulty, estimated_minutes, sort_order, required, analysis_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, '{}')`)
-        .bind(questionId, lessonId, task.title, prompt, chapter.no >= 8 ? "intermediate" : "beginner", chapter.no === 12 ? 60 : 30, taskIndex));
+      const reference = templateReferences[referenceFile];
+      if (!reference) throw new Error(`課程範本缺少參考作品：${referenceFile}`);
+      let assetId = assetByHash.get(reference.sha256);
+      if (!assetId) {
+        assetId = createId("asset");
+        assetByHash.set(reference.sha256, assetId);
+        assetRows.push([assetId, teacherId, reference.storageKey, "cloudflare_kv", reference.storageKey, reference.sha256, reference.fileName, reference.fileSize, "reference"]);
+      }
+      const prompt = `${task.description}\n\n教學影片：${videoTitle}\nhttps://www.youtube.com/watch?v=${videoId}\n\n原始範例檔案：${referenceFile}`;
+      questionRows.push([questionId, lessonId, task.title, prompt, chapter.no >= 8 ? "intermediate" : "beginner", chapter.no === 12 ? 60 : 30, taskIndex, 1, assetId, JSON.stringify(reference.analysis)]);
+      const automaticRules = suggestRubricRules(reference.analysis);
+      automaticRules.forEach((rule, ruleIndex) => {
+        ruleRows.push([createId("rule"), questionId, rule.label, rule.mode, rule.scope, rule.type, JSON.stringify(rule.config), rule.required ? 1 : 0, rule.weight, rule.passFeedback, rule.failFeedback, ruleIndex]);
+      });
       const checks = chapter.checks.filter((check) => task.checkIds.includes(check.id));
       checks.forEach((check, checkIndex) => {
-        statements.push(db.prepare(`INSERT INTO rubric_rules
-          (id, question_id, label, mode, scope, type, config_json, required, weight, pass_feedback, fail_feedback, sort_order)
-          VALUES (?, ?, ?, 'manual', 'project', 'manual_review', ?, 1, 0, '已完成此項功能。', '請依章節目標修正作品。', ?)`)
-          .bind(createId("rule"), questionId, check.label, JSON.stringify({ chapterNo: chapter.no, task: task.id, expectedReferenceFile: referenceFile }), checkIndex));
+        ruleRows.push([createId("rule"), questionId, check.label, "manual", "project", "manual_review", JSON.stringify({ chapterNo: chapter.no, task: task.id, expectedReferenceFile: referenceFile }), 1, 0, "已完成此項功能。", "請依章節目標修正作品。", automaticRules.length + checkIndex]);
       });
     });
   });
+  const statements = [
+    ...batchedInserts(db, "lessons", ["id", "course_version_id", "title", "objective", "description", "badge_name", "sort_order"], lessonRows),
+    ...batchedInserts(db, "file_assets", ["id", "owner_teacher_id", "r2_key", "storage_provider", "provider_file_id", "sha256", "file_name", "file_size", "purpose"], assetRows),
+    ...batchedInserts(db, "questions", ["id", "lesson_id", "title", "prompt", "difficulty", "estimated_minutes", "sort_order", "required", "reference_asset_id", "analysis_json"], questionRows),
+    ...batchedInserts(db, "rubric_rules", ["id", "question_id", "label", "mode", "scope", "type", "config_json", "required", "weight", "pass_feedback", "fail_feedback", "sort_order"], ruleRows),
+  ];
   await db.batch(statements);
+}
+
+type SqlValue = string | number | null;
+
+function batchedInserts(db: D1Database, table: string, columns: string[], rows: SqlValue[][]) {
+  const rowsPerStatement = Math.max(1, Math.floor(90 / columns.length));
+  const statements: D1PreparedStatement[] = [];
+  for (let start = 0; start < rows.length; start += rowsPerStatement) {
+    const chunk = rows.slice(start, start + rowsPerStatement);
+    const placeholders = chunk.map(() => `(${columns.map(() => "?").join(", ")})`).join(", ");
+    statements.push(db.prepare(`INSERT INTO ${table} (${columns.join(", ")}) VALUES ${placeholders}`).bind(...chunk.flat()));
+  }
+  return statements;
 }
 
 async function cloneVersion(db: D1Database, sourceVersionId: string, targetVersionId: string) {

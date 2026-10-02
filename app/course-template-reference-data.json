@@ -1,0 +1,2539 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    "11508-70001-02.sb3": {
+      "fileName": "11508-70001-02.sb3",
+      "fileSize": 42546,
+      "sha256": "87f76ea072697d244604d56116af911932a80ffd2649dda918950ca1ec73e937",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-02.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-02.sb3",
+        "fileSize": 42546,
+        "sha256": "87f76ea072697d244604d56116af911932a80ffd2649dda918950ca1ec73e937",
+        "targetCount": 2,
+        "spriteCount": 1,
+        "costumeCount": 2,
+        "backdropCount": 1,
+        "soundCount": 2,
+        "blockCount": 14,
+        "blockCounts": {
+          "event_whenflagclicked": 1,
+          "motion_gotoxy": 1,
+          "control_repeat": 4,
+          "motion_movesteps": 4,
+          "motion_turnleft": 4
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 14,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_repeat",
+              "motion_movesteps",
+              "motion_turnleft",
+              "control_repeat",
+              "motion_movesteps",
+              "motion_turnleft",
+              "control_repeat",
+              "motion_movesteps",
+              "motion_turnleft",
+              "control_repeat",
+              "motion_movesteps",
+              "motion_turnleft"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_repeat",
+                  "motion_movesteps",
+                  "motion_turnleft",
+                  "control_repeat",
+                  "motion_movesteps",
+                  "motion_turnleft",
+                  "control_repeat",
+                  "motion_movesteps",
+                  "motion_turnleft",
+                  "control_repeat",
+                  "motion_movesteps",
+                  "motion_turnleft"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-03-02.sb3": {
+      "fileName": "11508-70001-03-02.sb3",
+      "fileSize": 42473,
+      "sha256": "d7db52e9e32bb5ae8242b83e495d230a74c0eafa3211597b5138d70005927316",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-03-02.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-03-02.sb3",
+        "fileSize": 42473,
+        "sha256": "d7db52e9e32bb5ae8242b83e495d230a74c0eafa3211597b5138d70005927316",
+        "targetCount": 2,
+        "spriteCount": 1,
+        "costumeCount": 2,
+        "backdropCount": 1,
+        "soundCount": 2,
+        "blockCount": 11,
+        "blockCounts": {
+          "event_whenflagclicked": 1,
+          "motion_gotoxy": 1,
+          "motion_pointindirection": 1,
+          "motion_changexby": 2,
+          "control_repeat": 4,
+          "motion_changeyby": 2
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 11,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_repeat",
+              "control_repeat",
+              "motion_changexby",
+              "control_repeat",
+              "control_repeat",
+              "motion_changeyby",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_repeat",
+                  "motion_changexby",
+                  "control_repeat",
+                  "motion_changeyby",
+                  "control_repeat",
+                  "motion_changexby",
+                  "control_repeat",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-03.sb3": {
+      "fileName": "11508-70001-03.sb3",
+      "fileSize": 42630,
+      "sha256": "c72d2e75705c171d64ef8d75e971ea0ef00466b955cb0603aedfa472a65ed14c",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-03.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-03.sb3",
+        "fileSize": 42630,
+        "sha256": "c72d2e75705c171d64ef8d75e971ea0ef00466b955cb0603aedfa472a65ed14c",
+        "targetCount": 2,
+        "spriteCount": 1,
+        "costumeCount": 2,
+        "backdropCount": 1,
+        "soundCount": 2,
+        "blockCount": 15,
+        "blockCounts": {
+          "event_whenflagclicked": 1,
+          "motion_gotoxy": 1,
+          "motion_glidesecstoxy": 4,
+          "motion_pointindirection": 1,
+          "motion_turnleft": 4,
+          "operator_random": 4
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 15,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_glidesecstoxy",
+              "motion_glidesecstoxy",
+              "motion_glidesecstoxy",
+              "motion_pointindirection",
+              "motion_glidesecstoxy",
+              "motion_turnleft",
+              "motion_turnleft",
+              "motion_turnleft",
+              "motion_turnleft",
+              "operator_random",
+              "operator_random",
+              "operator_random",
+              "operator_random"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_turnleft",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_turnleft",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_turnleft",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_turnleft"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-04.sb3": {
+      "fileName": "11508-70001-04.sb3",
+      "fileSize": 42474,
+      "sha256": "641ff7e9b5ee8f4a6480716144ca0ec29713c7f7b696ce2b97026bde7e8d303b",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-04.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-04.sb3",
+        "fileSize": 42474,
+        "sha256": "641ff7e9b5ee8f4a6480716144ca0ec29713c7f7b696ce2b97026bde7e8d303b",
+        "targetCount": 2,
+        "spriteCount": 1,
+        "costumeCount": 2,
+        "backdropCount": 1,
+        "soundCount": 2,
+        "blockCount": 11,
+        "blockCounts": {
+          "event_whenflagclicked": 1,
+          "motion_gotoxy": 1,
+          "motion_pointindirection": 1,
+          "motion_changexby": 2,
+          "control_repeat": 4,
+          "motion_changeyby": 2
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 11,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_repeat",
+              "control_repeat",
+              "motion_changexby",
+              "control_repeat",
+              "control_repeat",
+              "motion_changeyby",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_repeat",
+                  "motion_changexby",
+                  "control_repeat",
+                  "motion_changeyby",
+                  "control_repeat",
+                  "motion_changexby",
+                  "control_repeat",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-05.sb3": {
+      "fileName": "11508-70001-05.sb3",
+      "fileSize": 42812,
+      "sha256": "4c3066ff0f2c071598d4c1d72318a812f798f27a71b31f80d664c1f8fa613d9d",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-05.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-05.sb3",
+        "fileSize": 42812,
+        "sha256": "4c3066ff0f2c071598d4c1d72318a812f798f27a71b31f80d664c1f8fa613d9d",
+        "targetCount": 2,
+        "spriteCount": 1,
+        "costumeCount": 2,
+        "backdropCount": 1,
+        "soundCount": 2,
+        "blockCount": 20,
+        "blockCounts": {
+          "event_whenflagclicked": 1,
+          "motion_gotoxy": 1,
+          "motion_pointindirection": 1,
+          "motion_changexby": 2,
+          "control_forever": 1,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 4,
+          "motion_changeyby": 2
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-06.sb3": {
+      "fileName": "11508-70001-06.sb3",
+      "fileSize": 72796,
+      "sha256": "6d1dadb44f38c660f03a4ed1b5078c069e940e85d0ed631d74397215ea863658",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-06.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-06.sb3",
+        "fileSize": 72796,
+        "sha256": "6d1dadb44f38c660f03a4ed1b5078c069e940e85d0ed631d74397215ea863658",
+        "targetCount": 3,
+        "spriteCount": 2,
+        "costumeCount": 6,
+        "backdropCount": 1,
+        "soundCount": 3,
+        "blockCount": 27,
+        "blockCounts": {
+          "event_whenflagclicked": 2,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 2,
+          "control_forever": 2,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 4,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 2
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-07.sb3": {
+      "fileName": "11508-70001-07.sb3",
+      "fileSize": 84397,
+      "sha256": "fc9de05e61d13526ca6f945919c0892728c8d3b62950421aaab5bb605b6cc379",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-07.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-07.sb3",
+        "fileSize": 84397,
+        "sha256": "fc9de05e61d13526ca6f945919c0892728c8d3b62950421aaab5bb605b6cc379",
+        "targetCount": 4,
+        "spriteCount": 3,
+        "costumeCount": 7,
+        "backdropCount": 1,
+        "soundCount": 5,
+        "blockCount": 42,
+        "blockCounts": {
+          "event_whenflagclicked": 3,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 3,
+          "control_forever": 2,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 5,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 2,
+          "looks_hide": 3,
+          "event_whenkeypressed": 1,
+          "motion_goto": 1,
+          "motion_goto_menu": 1,
+          "looks_show": 1,
+          "control_repeat_until": 1,
+          "sensing_touchingobject": 2,
+          "sensing_touchingobjectmenu": 2
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 15,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-08.sb3": {
+      "fileName": "11508-70001-08.sb3",
+      "fileSize": 85913,
+      "sha256": "48240404509a93976e655da2ee32f450cbfcbd4b0a928af49670793c54cd8520",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-08.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-08.sb3",
+        "fileSize": 85913,
+        "sha256": "48240404509a93976e655da2ee32f450cbfcbd4b0a928af49670793c54cd8520",
+        "targetCount": 5,
+        "spriteCount": 4,
+        "costumeCount": 11,
+        "backdropCount": 1,
+        "soundCount": 6,
+        "blockCount": 57,
+        "blockCounts": {
+          "event_whenflagclicked": 4,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 4,
+          "control_forever": 3,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 6,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 2,
+          "looks_hide": 6,
+          "event_whenkeypressed": 1,
+          "motion_goto": 2,
+          "motion_goto_menu": 2,
+          "looks_show": 2,
+          "control_repeat_until": 2,
+          "sensing_touchingobject": 4,
+          "sensing_touchingobjectmenu": 4
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 15,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat2",
+            "isStage": false,
+            "blockCount": 15,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "looks_show",
+              "motion_goto",
+              "motion_goto_menu",
+              "control_repeat_until",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "looks_hide",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "control_forever",
+              "motion_changexby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_forever",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "motion_changexby",
+                  "control_if",
+                  "looks_hide",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-09.sb3": {
+      "fileName": "11508-70001-09.sb3",
+      "fileSize": 86261,
+      "sha256": "f24d30c5c4f80fbf0a0330a3a0c0c3cbbe8a03bb434bcde5a8acd3a7d310f52c",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-09.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-09.sb3",
+        "fileSize": 86261,
+        "sha256": "f24d30c5c4f80fbf0a0330a3a0c0c3cbbe8a03bb434bcde5a8acd3a7d310f52c",
+        "targetCount": 5,
+        "spriteCount": 4,
+        "costumeCount": 11,
+        "backdropCount": 1,
+        "soundCount": 6,
+        "blockCount": 65,
+        "blockCounts": {
+          "event_whenflagclicked": 4,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 4,
+          "control_forever": 4,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 6,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 3,
+          "looks_hide": 6,
+          "event_whenkeypressed": 1,
+          "motion_goto": 2,
+          "motion_goto_menu": 2,
+          "looks_show": 2,
+          "control_repeat_until": 2,
+          "sensing_touchingobject": 4,
+          "sensing_touchingobjectmenu": 4,
+          "control_create_clone_of": 1,
+          "control_create_clone_of_menu": 1,
+          "control_wait": 1,
+          "control_start_as_clone": 1,
+          "control_delete_this_clone": 2
+        },
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 15,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat2",
+            "isStage": false,
+            "blockCount": 23,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "looks_show",
+              "motion_goto",
+              "motion_goto_menu",
+              "control_repeat_until",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "looks_hide",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "control_forever",
+              "motion_changexby",
+              "control_create_clone_of",
+              "control_create_clone_of_menu",
+              "control_forever",
+              "control_wait",
+              "operator_random",
+              "control_start_as_clone",
+              "control_delete_this_clone",
+              "control_delete_this_clone"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_forever",
+                  "control_wait",
+                  "operator_random",
+                  "control_create_clone_of",
+                  "control_create_clone_of_menu"
+                ]
+              },
+              {
+                "event": "control_start_as_clone",
+                "opcodes": [
+                  "control_start_as_clone",
+                  "control_forever",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "motion_changexby",
+                  "control_if",
+                  "looks_hide",
+                  "control_delete_this_clone",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "control_delete_this_clone"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-10.sb3": {
+      "fileName": "11508-70001-10.sb3",
+      "fileSize": 86540,
+      "sha256": "26df2ba3bc66b9a8684e7343efbba8fad1b9b8c3db6bfc7b9e41f29d49bce99d",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-10.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-10.sb3",
+        "fileSize": 86540,
+        "sha256": "26df2ba3bc66b9a8684e7343efbba8fad1b9b8c3db6bfc7b9e41f29d49bce99d",
+        "targetCount": 5,
+        "spriteCount": 4,
+        "costumeCount": 11,
+        "backdropCount": 1,
+        "soundCount": 6,
+        "blockCount": 67,
+        "blockCounts": {
+          "event_whenflagclicked": 4,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 4,
+          "control_forever": 4,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 6,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 3,
+          "looks_hide": 6,
+          "event_whenkeypressed": 1,
+          "motion_goto": 2,
+          "motion_goto_menu": 2,
+          "looks_show": 2,
+          "control_repeat_until": 2,
+          "sensing_touchingobject": 4,
+          "sensing_touchingobjectmenu": 4,
+          "data_setvariableto": 1,
+          "data_changevariableby": 1,
+          "control_create_clone_of": 1,
+          "control_create_clone_of_menu": 1,
+          "control_wait": 1,
+          "control_start_as_clone": 1,
+          "control_delete_this_clone": 2
+        },
+        "variables": [
+          "my variable",
+          "敵人血量"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 17,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "data_setvariableto",
+              "data_changevariableby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat2",
+            "isStage": false,
+            "blockCount": 23,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "looks_show",
+              "motion_goto",
+              "motion_goto_menu",
+              "control_repeat_until",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "looks_hide",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "control_forever",
+              "motion_changexby",
+              "control_create_clone_of",
+              "control_create_clone_of_menu",
+              "control_forever",
+              "control_wait",
+              "operator_random",
+              "control_start_as_clone",
+              "control_delete_this_clone",
+              "control_delete_this_clone"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_forever",
+                  "control_wait",
+                  "operator_random",
+                  "control_create_clone_of",
+                  "control_create_clone_of_menu"
+                ]
+              },
+              {
+                "event": "control_start_as_clone",
+                "opcodes": [
+                  "control_start_as_clone",
+                  "control_forever",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "motion_changexby",
+                  "control_if",
+                  "looks_hide",
+                  "control_delete_this_clone",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "control_delete_this_clone"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-11.sb3": {
+      "fileName": "11508-70001-11.sb3",
+      "fileSize": 90070,
+      "sha256": "676ec5355cb39acec80bc071184e5c93c3a2358c29b4f9dbd09db7dc4385c2b3",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-11.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-11.sb3",
+        "fileSize": 90070,
+        "sha256": "676ec5355cb39acec80bc071184e5c93c3a2358c29b4f9dbd09db7dc4385c2b3",
+        "targetCount": 7,
+        "spriteCount": 6,
+        "costumeCount": 15,
+        "backdropCount": 1,
+        "soundCount": 8,
+        "blockCount": 85,
+        "blockCounts": {
+          "event_whenflagclicked": 6,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 4,
+          "control_forever": 4,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 8,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 3,
+          "looks_hide": 8,
+          "event_whenkeypressed": 1,
+          "motion_goto": 2,
+          "motion_goto_menu": 2,
+          "looks_show": 4,
+          "control_repeat_until": 2,
+          "sensing_touchingobject": 4,
+          "sensing_touchingobjectmenu": 4,
+          "data_setvariableto": 2,
+          "data_changevariableby": 2,
+          "operator_equals": 2,
+          "event_broadcast": 2,
+          "control_create_clone_of": 1,
+          "control_create_clone_of_menu": 1,
+          "control_wait": 1,
+          "control_start_as_clone": 1,
+          "control_delete_this_clone": 2,
+          "event_whenbroadcastreceived": 2,
+          "control_stop": 2
+        },
+        "variables": [
+          "my variable",
+          "主角血量",
+          "敵人血量"
+        ],
+        "broadcasts": [
+          "LOSE",
+          "WIN"
+        ],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "data_setvariableto",
+              "data_changevariableby",
+              "control_if",
+              "operator_equals",
+              "event_broadcast"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "control_if",
+                  "operator_equals",
+                  "event_broadcast",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat2",
+            "isStage": false,
+            "blockCount": 28,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "looks_show",
+              "motion_goto",
+              "motion_goto_menu",
+              "control_repeat_until",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "looks_hide",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "control_forever",
+              "motion_changexby",
+              "control_create_clone_of",
+              "control_create_clone_of_menu",
+              "control_forever",
+              "control_wait",
+              "operator_random",
+              "control_start_as_clone",
+              "control_delete_this_clone",
+              "control_delete_this_clone",
+              "data_setvariableto",
+              "data_changevariableby",
+              "control_if",
+              "operator_equals",
+              "event_broadcast"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide",
+                  "control_forever",
+                  "control_wait",
+                  "operator_random",
+                  "control_create_clone_of",
+                  "control_create_clone_of_menu"
+                ]
+              },
+              {
+                "event": "control_start_as_clone",
+                "opcodes": [
+                  "control_start_as_clone",
+                  "control_forever",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "motion_changexby",
+                  "control_if",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "control_if",
+                  "event_broadcast",
+                  "operator_equals",
+                  "control_delete_this_clone",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "control_delete_this_clone"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "WIN",
+            "isStage": false,
+            "blockCount": 5,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenbroadcastreceived",
+              "control_stop",
+              "looks_show"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenbroadcastreceived",
+                "opcodes": [
+                  "event_whenbroadcastreceived",
+                  "looks_show",
+                  "control_stop"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "LOSE",
+            "isStage": false,
+            "blockCount": 5,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenbroadcastreceived",
+              "looks_show",
+              "control_stop"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenbroadcastreceived",
+                "opcodes": [
+                  "event_whenbroadcastreceived",
+                  "looks_show",
+                  "control_stop"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-12.sb3": {
+      "fileName": "11508-70001-12.sb3",
+      "fileSize": 89848,
+      "sha256": "e11e1b4c4ecded07a9b39d179b95b579862192e735f7f70d28128b6c1fb5284a",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-12.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-12.sb3",
+        "fileSize": 89848,
+        "sha256": "e11e1b4c4ecded07a9b39d179b95b579862192e735f7f70d28128b6c1fb5284a",
+        "targetCount": 7,
+        "spriteCount": 6,
+        "costumeCount": 15,
+        "backdropCount": 1,
+        "soundCount": 8,
+        "blockCount": 81,
+        "blockCounts": {
+          "event_whenflagclicked": 6,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 4,
+          "control_forever": 4,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 6,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 3,
+          "looks_hide": 8,
+          "event_whenkeypressed": 1,
+          "motion_goto": 2,
+          "motion_goto_menu": 2,
+          "looks_show": 4,
+          "control_repeat_until": 2,
+          "sensing_touchingobject": 4,
+          "sensing_touchingobjectmenu": 4,
+          "data_setvariableto": 2,
+          "data_changevariableby": 2,
+          "control_create_clone_of": 1,
+          "control_create_clone_of_menu": 1,
+          "control_wait": 1,
+          "control_start_as_clone": 1,
+          "control_delete_this_clone": 2,
+          "operator_equals": 2,
+          "control_stop": 2,
+          "control_wait_until": 2
+        },
+        "variables": [
+          "my variable",
+          "主角血量",
+          "敵人血量"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 17,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "data_setvariableto",
+              "data_changevariableby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat2",
+            "isStage": false,
+            "blockCount": 25,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "looks_show",
+              "motion_goto",
+              "motion_goto_menu",
+              "control_repeat_until",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "looks_hide",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "control_forever",
+              "motion_changexby",
+              "control_create_clone_of",
+              "control_create_clone_of_menu",
+              "control_forever",
+              "control_wait",
+              "operator_random",
+              "control_start_as_clone",
+              "control_delete_this_clone",
+              "control_delete_this_clone",
+              "data_setvariableto",
+              "data_changevariableby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide",
+                  "control_forever",
+                  "control_wait",
+                  "operator_random",
+                  "control_create_clone_of",
+                  "control_create_clone_of_menu"
+                ]
+              },
+              {
+                "event": "control_start_as_clone",
+                "opcodes": [
+                  "control_start_as_clone",
+                  "control_forever",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "motion_changexby",
+                  "control_if",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "control_delete_this_clone",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "control_delete_this_clone"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "WIN",
+            "isStage": false,
+            "blockCount": 6,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "operator_equals",
+              "looks_show",
+              "control_stop",
+              "control_wait_until"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_wait_until",
+                  "operator_equals",
+                  "looks_show",
+                  "control_stop"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "LOSE",
+            "isStage": false,
+            "blockCount": 6,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "control_wait_until",
+              "operator_equals",
+              "looks_show",
+              "control_stop"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_wait_until",
+                  "operator_equals",
+                  "looks_show",
+                  "control_stop"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001-13.sb3": {
+      "fileName": "11508-70001-13.sb3",
+      "fileSize": 90244,
+      "sha256": "4583aa63e05109926eda822be5d329d37e9e7406977ca26bce577ac7f72f29ee",
+      "storageKey": "reference/template_yilan_scratch_11508-70001-13.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001-13.sb3",
+        "fileSize": 90244,
+        "sha256": "4583aa63e05109926eda822be5d329d37e9e7406977ca26bce577ac7f72f29ee",
+        "targetCount": 7,
+        "spriteCount": 6,
+        "costumeCount": 15,
+        "backdropCount": 1,
+        "soundCount": 8,
+        "blockCount": 90,
+        "blockCounts": {
+          "event_whenflagclicked": 7,
+          "data_setvariableto": 3,
+          "control_repeat_until": 3,
+          "data_changevariableby": 3,
+          "operator_equals": 4,
+          "control_stop": 3,
+          "control_wait": 2,
+          "motion_gotoxy": 2,
+          "motion_pointindirection": 1,
+          "motion_changexby": 4,
+          "control_forever": 4,
+          "sensing_keypressed": 4,
+          "sensing_keyoptions": 4,
+          "control_if": 6,
+          "motion_changeyby": 2,
+          "motion_glidesecstoxy": 2,
+          "operator_random": 3,
+          "looks_hide": 8,
+          "event_whenkeypressed": 1,
+          "motion_goto": 2,
+          "motion_goto_menu": 2,
+          "looks_show": 4,
+          "sensing_touchingobject": 4,
+          "sensing_touchingobjectmenu": 4,
+          "control_create_clone_of": 1,
+          "control_create_clone_of_menu": 1,
+          "control_start_as_clone": 1,
+          "control_delete_this_clone": 2,
+          "control_wait_until": 2,
+          "operator_or": 1
+        },
+        "variables": [
+          "my variable",
+          "主角血量",
+          "敵人血量",
+          "遊戲時間"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "data_setvariableto",
+              "control_repeat_until",
+              "data_changevariableby",
+              "operator_equals",
+              "control_stop",
+              "control_wait"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "control_repeat_until",
+                  "control_wait",
+                  "data_changevariableby",
+                  "operator_equals",
+                  "control_stop"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 20,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "motion_pointindirection",
+              "motion_changexby",
+              "control_forever",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "control_if",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changexby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby",
+              "control_if",
+              "sensing_keypressed",
+              "sensing_keyoptions",
+              "motion_changeyby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_pointindirection",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby",
+                  "control_if",
+                  "sensing_keypressed",
+                  "sensing_keyoptions",
+                  "motion_changeyby"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat",
+            "isStage": false,
+            "blockCount": 7,
+            "opcodes": [
+              "event_whenflagclicked",
+              "motion_gotoxy",
+              "control_forever",
+              "motion_glidesecstoxy",
+              "operator_random",
+              "operator_random",
+              "motion_glidesecstoxy"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "motion_gotoxy",
+                  "control_forever",
+                  "motion_glidesecstoxy",
+                  "operator_random",
+                  "motion_glidesecstoxy",
+                  "operator_random"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bananas",
+            "isStage": false,
+            "blockCount": 17,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "event_whenkeypressed",
+              "motion_goto",
+              "motion_goto_menu",
+              "looks_show",
+              "control_repeat_until",
+              "motion_changexby",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "data_setvariableto",
+              "data_changevariableby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide"
+                ]
+              },
+              {
+                "event": "event_whenkeypressed",
+                "opcodes": [
+                  "event_whenkeypressed",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "motion_changexby",
+                  "control_if",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Bat2",
+            "isStage": false,
+            "blockCount": 25,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "looks_show",
+              "motion_goto",
+              "motion_goto_menu",
+              "control_repeat_until",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "looks_hide",
+              "control_if",
+              "looks_hide",
+              "sensing_touchingobject",
+              "sensing_touchingobjectmenu",
+              "control_forever",
+              "motion_changexby",
+              "control_create_clone_of",
+              "control_create_clone_of_menu",
+              "control_forever",
+              "control_wait",
+              "operator_random",
+              "control_start_as_clone",
+              "control_delete_this_clone",
+              "control_delete_this_clone",
+              "data_setvariableto",
+              "data_changevariableby"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "data_setvariableto",
+                  "looks_hide",
+                  "control_forever",
+                  "control_wait",
+                  "operator_random",
+                  "control_create_clone_of",
+                  "control_create_clone_of_menu"
+                ]
+              },
+              {
+                "event": "control_start_as_clone",
+                "opcodes": [
+                  "control_start_as_clone",
+                  "control_forever",
+                  "motion_goto",
+                  "motion_goto_menu",
+                  "looks_show",
+                  "control_repeat_until",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "motion_changexby",
+                  "control_if",
+                  "looks_hide",
+                  "data_changevariableby",
+                  "control_delete_this_clone",
+                  "sensing_touchingobject",
+                  "sensing_touchingobjectmenu",
+                  "looks_hide",
+                  "control_delete_this_clone"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "WIN",
+            "isStage": false,
+            "blockCount": 6,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "operator_equals",
+              "looks_show",
+              "control_stop",
+              "control_wait_until"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_wait_until",
+                  "operator_equals",
+                  "looks_show",
+                  "control_stop"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "LOSE",
+            "isStage": false,
+            "blockCount": 8,
+            "opcodes": [
+              "event_whenflagclicked",
+              "looks_hide",
+              "control_wait_until",
+              "operator_equals",
+              "looks_show",
+              "control_stop",
+              "operator_or",
+              "operator_equals"
+            ],
+            "scripts": [
+              {
+                "event": "event_whenflagclicked",
+                "opcodes": [
+                  "event_whenflagclicked",
+                  "looks_hide",
+                  "control_wait_until",
+                  "operator_or",
+                  "operator_equals",
+                  "operator_equals",
+                  "looks_show",
+                  "control_stop"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "11508-70001.sb3": {
+      "fileName": "11508-70001.sb3",
+      "fileSize": 41931,
+      "sha256": "cf58d894adc562fe0f60ecb4ff88a701a2e17cc97e75199fc563697597039e9d",
+      "storageKey": "reference/template_yilan_scratch_11508-70001.sb3",
+      "analysis": {
+        "schemaVersion": 1,
+        "valid": true,
+        "fileName": "11508-70001.sb3",
+        "fileSize": 41931,
+        "sha256": "cf58d894adc562fe0f60ecb4ff88a701a2e17cc97e75199fc563697597039e9d",
+        "targetCount": 2,
+        "spriteCount": 1,
+        "costumeCount": 2,
+        "backdropCount": 1,
+        "soundCount": 2,
+        "blockCount": 0,
+        "blockCounts": {},
+        "variables": [
+          "my variable"
+        ],
+        "broadcasts": [],
+        "extensions": [],
+        "targets": [
+          {
+            "name": "Stage",
+            "isStage": true,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          },
+          {
+            "name": "Sprite1",
+            "isStage": false,
+            "blockCount": 0,
+            "opcodes": [],
+            "scripts": []
+          }
+        ]
+      }
+    }
+  }
+}

@@ -76,7 +76,7 @@ export function CourseStudio() {
       }));
       setCourse(data.course);
       await loadCourses();
-      setMessage("已加入 12 堂課程範本。章節、功能說明、14 支影片與建議範例檔名已填入；請逐題上傳參考 .sb3。");
+      setMessage("已加入完整的 12 堂課程範本。14 支影片、原始參考作品、作品分析與檢核規則都已帶入，可直接預覽後送審。");
     } catch (error) { setMessage(error instanceof Error ? error.message : "無法加入課程範本。"); }
     finally { setBusy(false); }
   }
@@ -232,7 +232,7 @@ export function CourseStudio() {
   const totals = useMemo(() => course?.lessons.flatMap((lesson) => lesson.questions.map((question) => ({ id: question.id, total: question.rules.reduce((sum, rule) => sum + rule.weight, 0) }))) ?? [], [course]);
 
   return <main className="studio-shell">
-    <header className="studio-header"><div><Link href="/">← 回首頁</Link><p className="eyebrow">Course Studio</p><h1>Scratch 課程設計室</h1><p>從參考作品產生可編輯、可重現的檢核規則。</p></div><div className="studio-header__actions">{!signedIn && <button onClick={login} disabled={busy}>教師 Google 登入</button>}<Link href="/library">公開課程庫</Link><label className="button-label">匯入課程 ZIP<input type="file" accept=".zip" onChange={importCourse} hidden /></label></div></header>
+    <header className="studio-header"><div><Link href="/?mode=map" onClick={(event) => { event.preventDefault(); window.location.assign("/?mode=map"); }}>← 回課程地圖</Link><p className="eyebrow">Course Studio</p><h1>Scratch 課程設計室</h1><p>從參考作品產生可編輯、可重現的檢核規則。</p></div><div className="studio-header__actions">{!signedIn && <button onClick={login} disabled={busy}>教師 Google 登入</button>}<Link href="/library">公開課程庫</Link><label className="button-label">匯入課程 ZIP<input type="file" accept=".zip" onChange={importCourse} hidden /></label></div></header>
     <div className="studio-message">{message}</div>
     <div className="studio-layout">
       <aside className="studio-sidebar"><button onClick={createCourse} disabled={!signedIn || busy}>＋ 建立空白課程</button><button className="template-button" onClick={createOfficialTemplate} disabled={!signedIn || busy}>加入宜蘭 Scratch 12 堂範本</button>{courses.map((item) => <button className={course?.id === item.id ? "selected" : ""} key={item.id} onClick={() => void loadCourse(item.id)}><strong>{item.title}</strong><span>v{item.version_no} · {item.version_status} · {item.lesson_count} 堂</span></button>)}</aside>
