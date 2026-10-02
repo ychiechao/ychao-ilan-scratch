@@ -57,7 +57,13 @@ test("server-renders the new course platform entry pages", async () => {
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, new RegExp(text));
-    assert.match(html, new RegExp(`<a href="${backHref.replace("?", "\\?")}">← 回${backLabel}<\\/a>`));
+    if (backHref === "/?mode=map") {
+      assert.match(html, /<form class="hard-navigation-form" action="\/" method="get">/);
+      assert.match(html, /<input type="hidden" name="mode" value="map"/);
+      assert.match(html, new RegExp(`<button type="submit">← 回${backLabel}<\\/button>`));
+    } else {
+      assert.match(html, new RegExp(`<a href="${backHref.replace("?", "\\?")}">← 回${backLabel}<\\/a>`));
+    }
     if (path === "/studio") assert.match(html, /加入宜蘭 Scratch 12 堂範本/);
   }
 });

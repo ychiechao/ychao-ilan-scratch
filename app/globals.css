@@ -1847,6 +1847,7 @@ td:first-child span {
 .studio-header a,
 .library-header a,
 .review-shell a,
+.hard-navigation-form button,
 .button-label {
   align-items: center;
   background: var(--ink);
@@ -1860,6 +1861,8 @@ td:first-child span {
   padding: 0 14px;
   text-decoration: none;
 }
+
+.hard-navigation-form { margin: 0; }
 
 .studio-shell,
 .library-shell,
