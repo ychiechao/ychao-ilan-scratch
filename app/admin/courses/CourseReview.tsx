@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../../firebase-client";
 
@@ -52,7 +51,7 @@ export function CourseReview() {
     const link = document.createElement("a"); link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
   }
   return <main className="review-shell">
-    <header><div><Link href="/">← 回首頁</Link><p className="eyebrow">Administration</p><h1>公開課程審核</h1></div><button onClick={login}>超管 Google 登入</button></header>
+    <header><div><a href="/">← 回首頁</a><p className="eyebrow">Administration</p><h1>公開課程審核</h1></div><button onClick={login}>超管 Google 登入</button></header>
     <div className="studio-message">{message}</div>
     <section>
       {reviews.map((item) => <article className="review-card" key={item.version_id}><div><span>v{item.version_no} · {item.lesson_count} 堂 · {item.question_count} 題</span><h2>{item.title}</h2><p>{item.summary}</p><small>{item.owner_name} · {item.owner_email}</small></div><div><button onClick={() => void preview(item.version_id)}>完整預覽</button><button onClick={() => void review(item.version_id, "approve")}>通過發布</button><button className="danger" onClick={() => void review(item.version_id, "reject")}>退回修改</button></div></article>)}

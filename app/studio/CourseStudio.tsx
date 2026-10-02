@@ -1,7 +1,6 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../firebase-client";
@@ -218,7 +217,7 @@ export function CourseStudio() {
   const totals = useMemo(() => course?.lessons.flatMap((lesson) => lesson.questions.map((question) => ({ id: question.id, total: question.rules.reduce((sum, rule) => sum + rule.weight, 0) }))) ?? [], [course]);
 
   return <main className="studio-shell">
-    <header className="studio-header"><div><Link href="/">← 回首頁</Link><p className="eyebrow">Course Studio</p><h1>Scratch 課程設計室</h1><p>從參考作品產生可編輯、可重現的檢核規則。</p></div><div className="studio-header__actions">{!signedIn && <button onClick={login} disabled={busy}>教師 Google 登入</button>}<Link href="/library">公開課程庫</Link><label className="button-label">匯入課程 ZIP<input type="file" accept=".zip" onChange={importCourse} hidden /></label></div></header>
+    <header className="studio-header"><div><a href="/">← 回首頁</a><p className="eyebrow">Course Studio</p><h1>Scratch 課程設計室</h1><p>從參考作品產生可編輯、可重現的檢核規則。</p></div><div className="studio-header__actions">{!signedIn && <button onClick={login} disabled={busy}>教師 Google 登入</button>}<a href="/library">公開課程庫</a><label className="button-label">匯入課程 ZIP<input type="file" accept=".zip" onChange={importCourse} hidden /></label></div></header>
     <div className="studio-message">{message}</div>
     <div className="studio-layout">
       <aside className="studio-sidebar"><button onClick={createCourse} disabled={!signedIn || busy}>＋ 建立課程</button>{courses.map((item) => <button className={course?.id === item.id ? "selected" : ""} key={item.id} onClick={() => void loadCourse(item.id)}><strong>{item.title}</strong><span>v{item.version_no} · {item.version_status} · {item.lesson_count} 堂</span></button>)}</aside>

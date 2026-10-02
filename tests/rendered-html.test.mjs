@@ -55,7 +55,9 @@ test("server-renders the new course platform entry pages", async () => {
   for (const [path, text] of cases) {
     const response = await render(path);
     assert.equal(response.status, 200);
-    assert.match(await response.text(), new RegExp(text));
+    const html = await response.text();
+    assert.match(html, new RegExp(text));
+    assert.match(html, path === "/admin/storage" ? /<a href="\/\?mode=admin">← 回超管後台<\/a>/ : /<a href="\/">← 回首頁<\/a>/);
   }
 });
 

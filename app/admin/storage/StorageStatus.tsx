@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../../firebase-client";
 
@@ -49,7 +48,7 @@ export function StorageStatusPanel() {
     <main className="drive-setup-shell">
       <header className="library-header">
         <div>
-          <Link href="/?mode=admin">← 回超管後台</Link>
+          <a href="/?mode=admin">← 回超管後台</a>
           <p className="eyebrow">File storage</p>
           <h1>Cloudflare 檔案儲存</h1>
           <p>教師參考作品由網站私密保存；學生作品仍只在學生裝置分析，不會上傳。</p>
@@ -64,7 +63,7 @@ export function StorageStatusPanel() {
           <div><span>儲存服務</span><strong>{status.provider}</strong></div>
           <div><span>單檔上限</span><strong>{status.maxFileSizeMb} MB</strong></div>
           <div><span>設定方式</span><strong>{status.mode === "direct" ? "Worker 直接連線" : status.mode === "worker_service" ? "網站安全連線" : "等待連線"}</strong></div>
-          <Link className="primary-link" href="/admin/courses">前往課程審核</Link>
+          <a className="primary-link" href="/admin/courses">前往課程審核</a>
         </section>
       )}
     </main>
