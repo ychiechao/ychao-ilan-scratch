@@ -79,10 +79,68 @@ type AdminClass = ClassInfo & {
   student_count?: number;
 };
 
+type AdminUser = {
+  id: string;
+  user_type: "teacher" | "student";
+  name: string;
+  email?: string;
+  role: string;
+  status: string;
+  school_name?: string;
+  last_login_at?: string;
+  last_active_at?: string;
+  created_at?: string;
+  class_name?: string;
+  teacher_name?: string;
+  seat_no?: string;
+  class_count?: number;
+  student_count?: number;
+  solved_count?: number;
+  passed_count?: number;
+  badge_count?: number;
+  last_solved_at?: string;
+};
+
+type AdminCourse = {
+  id: string;
+  title: string;
+  summary: string;
+  status: string;
+  version_status: string;
+  version_no: number;
+  lesson_count: number;
+  adoption_count: number;
+  owner_name: string;
+  owner_email: string;
+  updated_at?: string;
+};
+
+type AdminActivity = {
+  id: string;
+  user_type: string;
+  user_id: string;
+  user_name?: string;
+  action: string;
+  detail_json?: string;
+  created_at: string;
+};
+
+type TeacherCourseOption = { id: string; title: string; current_version_id: string };
+
 type AdminDashboard = {
   teachers: Teacher[];
+  students: AdminUser[];
+  users: AdminUser[];
   classes: AdminClass[];
+  courses: AdminCourse[];
+  permissions: Array<{ teacher_id: string; course_id: string; allowed: number }>;
+  activity: AdminActivity[];
   fileStorage: { configured: boolean; provider?: string; mode?: string };
+};
+
+const emptyAdminDashboard: AdminDashboard = {
+  teachers: [], students: [], users: [], classes: [], courses: [], permissions: [], activity: [],
+  fileStorage: { configured: false },
 };
 
 type NoticeType = "success" | "error" | "info";
@@ -177,11 +235,12 @@ export function CourseApp() {
   const [busy, setBusy] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(() => readStored("scratch-teacher"));
   const [admin, setAdmin] = useState<Teacher | null>(() => readStored("scratch-admin"));
-  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard>({ teachers: [], classes: [], fileStorage: { configured: false } });
+  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard>(emptyAdminDashboard);
   const [classes, setClasses] = useState<ClassInfo[]>(() => readStored("scratch-classes") ?? []);
   const [selectedClassId, setSelectedClassId] = useState(
     () => readStored<ClassInfo[]>("scratch-classes")?.[0]?.id ?? ""
   );
+  const [teacherCourses, setTeacherCourses] = useState<TeacherCourseOption[]>([]);
   const [dashboard, setDashboard] = useState<Dashboard>(emptyDashboard);
   const [student, setStudent] = useState<Student | null>(() => readStored("scratch-student"));
   const [studentClass, setStudentClass] = useState<ClassInfo | null>(() => readStored("scratch-student-class"));
@@ -196,6 +255,11 @@ export function CourseApp() {
     if (!admin?.id) return;
     void authorizedFetch("/api/admin/dashboard").then((response) => readJson<AdminDashboard>(response)).then(setAdminDashboard).catch(() => undefined);
   }, [admin?.id]);
+
+  useEffect(() => {
+    if (teacher?.status !== "active") return;
+    void authorizedFetch("/api/library").then((response) => readJson<{ courses: TeacherCourseOption[] }>(response)).then((data) => setTeacherCourses(data.courses)).catch(() => undefined);
+  }, [teacher?.id, teacher?.status]);
 
   const earnedCount = badges.length;
   const progressPercent = Math.round((earnedCount / chapters.length) * 100);
@@ -544,7 +608,7 @@ export function CourseApp() {
         await authorizedFetch("/api/classes", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: form.get("name") }),
+          body: JSON.stringify({ name: form.get("name"), courseVersionId: form.get("courseVersionId") }),
         })
       );
       const nextClasses = [data.class, ...classes];
@@ -693,7 +757,7 @@ export function CourseApp() {
     await signOutFirebase().catch(() => null);
     localStorage.removeItem("scratch-admin");
     setAdmin(null);
-    setAdminDashboard({ teachers: [], classes: [], fileStorage: { configured: false } });
+    setAdminDashboard(emptyAdminDashboard);
   }
 
   const selected = chapters.find((chapter) => chapter.no === selectedChapter) ?? chapters[0];
@@ -946,11 +1010,16 @@ export function CourseApp() {
                     </label>
                     <form onSubmit={createClass}>
                       <input name="name" placeholder="新增班級名稱" />
+                      <select name="courseVersionId" defaultValue="" aria-label="新班級課程">
+                        <option value="">建立後再選課程</option>
+                        {teacherCourses.map((course) => <option key={course.id} value={course.current_version_id}>{course.title}</option>)}
+                      </select>
                       <button disabled={busy}>新增班級</button>
                     </form>
                     <button className="ghost" onClick={() => selectedClassId && refreshDashboard(selectedClassId)}>
                       更新後台
                     </button>
+                    <a className="text-link" href="/library">選擇班級課程</a>
                   </div>
 
                   {dashboard.class?.status === "active" ? (
@@ -1024,20 +1093,13 @@ export function CourseApp() {
                   <p className="eyebrow">Super Admin</p>
                   <h2>超級管理後台</h2>
                 </div>
-                {admin && <div className="admin-heading-actions"><a className="text-link" href="/admin/storage">檔案儲存狀態</a>{adminDashboard.fileStorage.configured && <a className="text-link" href="/admin/courses">課程審核</a>}<button className="ghost" onClick={logoutAdmin}>登出</button></div>}
+                {admin && <div className="admin-heading-actions"><a className="text-link" href="/admin/storage">檔案儲存狀態</a><a className="text-link" href="/admin/courses">課程管理</a><button className="ghost" onClick={logoutAdmin}>登出</button></div>}
               </div>
               {!admin ? (
                 <form className="admin-login" onSubmit={loginAdmin}>
                   <h3>超級管理者登入</h3>
                   <button disabled={busy}>使用 Google 進入管理後台</button>
                 </form>
-              ) : !adminDashboard.fileStorage.configured ? (
-                <div className="admin-storage-required">
-                  <p className="eyebrow">Storage unavailable</p>
-                  <h3>Cloudflare 檔案儲存尚未連線</h3>
-                  <p>目前無法保存教師參考作品，請通知網站管理者檢查部署設定。</p>
-                  <a className="primary-link" href="/admin/storage">查看儲存狀態</a>
-                </div>
               ) : (
                 <AdminConsole
                   dashboard={adminDashboard}
@@ -1376,47 +1438,95 @@ function AdminConsole({
   onRefresh: () => void;
   onAction: (payload: Record<string, unknown>, successMessage: string) => Promise<void>;
 }) {
+  const [tab, setTab] = useState<"users" | "courses">("users");
+  const [query, setQuery] = useState("");
+  const [userKind, setUserKind] = useState<"all" | "teacher" | "student">("all");
   const pendingTeachers = dashboard.teachers.filter((item) => item.role !== "superadmin" && item.status === "pending").length;
   const pendingClasses = dashboard.classes.filter((item) => item.status === "pending").length;
+  const publishedCourses = dashboard.courses.filter((item) => item.status === "published");
+  const visibleUsers = dashboard.users.filter((item) => {
+    const haystack = `${item.name} ${item.email ?? ""} ${item.school_name ?? ""} ${item.class_name ?? ""}`.toLowerCase();
+    return (userKind === "all" || item.user_type === userKind) && haystack.includes(query.trim().toLowerCase());
+  });
+  function prettyDate(value?: string) {
+    if (!value) return "尚無紀錄";
+    const date = new Date(value.endsWith("Z") ? value : `${value.replace(" ", "T")}Z`);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-TW", { dateStyle: "short", timeStyle: "short" });
+  }
+  function activityLabel(action: string) {
+    return ({ login: "登入系統", register: "註冊帳號", join_class: "加入班級", question_attempt: "完成課程題目", chapter_attempt: "完成章節檢核", user_profile: "調整使用者資料", course_permission: "調整課程權限", teacher_status: "調整教師狀態", class_status: "調整班級狀態" } as Record<string, string>)[action] ?? action;
+  }
   return (
     <div className="admin-console">
       <div className="dashboard-summary admin-summary">
-        <div><span>教師帳號</span><strong>{dashboard.teachers.filter((item) => item.role !== "superadmin").length}</strong></div>
-        <div><span>待審教師</span><strong>{pendingTeachers}</strong></div>
-        <div><span>待審班級</span><strong>{pendingClasses}</strong></div>
+        <div><span>全部使用者</span><strong>{dashboard.users.length}</strong></div>
+        <div><span>待啟用帳號／班級</span><strong>{pendingTeachers + pendingClasses}</strong></div>
+        <div><span>已發布課程</span><strong>{publishedCourses.length}</strong></div>
         <button className="ghost" disabled={busy} onClick={onRefresh}>更新資料</button>
       </div>
 
-      <section className="admin-section">
-        <h3>教師帳號</h3>
-        <div className="admin-list">
-          {dashboard.teachers.map((item) => (
-            <article key={item.id} className="admin-item">
-              <div>
-                <span>{item.role === "superadmin" ? "超級管理者" : accountStatusLabel(item.status)}</span>
-                <strong>{item.name}</strong>
-                <small>{item.email}</small>
-              </div>
-              {item.role !== "superadmin" && (
-                <>
-                  <button
-                    disabled={busy}
-                    onClick={() => onAction(
-                      { action: "teacher_status", teacherId: item.id, status: item.status === "active" ? "disabled" : "active" },
-                      item.status === "active" ? "已停用教師帳號。" : "已啟用教師帳號。"
-                    )}
-                  >
-                    {item.status === "active" ? "停用" : "啟用"}
-                  </button>
-                </>
-              )}
-            </article>
-          ))}
-        </div>
+      <div className="admin-tabs" role="tablist" aria-label="後台管理區">
+        <button className={tab === "users" ? "active" : "ghost"} onClick={() => setTab("users")}>使用者管理</button>
+        <button className={tab === "courses" ? "active" : "ghost"} onClick={() => setTab("courses")}>課程管理</button>
+      </div>
+
+      {tab === "users" ? <>
+        <section className="admin-section">
+          <div className="admin-section-heading">
+            <div><p className="eyebrow">Accounts</p><h3>使用者管理</h3></div>
+            <div className="admin-filters">
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋姓名、Email、學校或班級" aria-label="搜尋使用者" />
+              <select value={userKind} onChange={(event) => setUserKind(event.target.value as typeof userKind)} aria-label="使用者身分">
+                <option value="all">全部身分</option><option value="teacher">教師與超管</option><option value="student">學生</option>
+              </select>
+            </div>
+          </div>
+          <div className="admin-user-list">
+            {visibleUsers.map((item) => {
+              const permissions = new Map(dashboard.permissions.filter((permission) => permission.teacher_id === item.id).map((permission) => [permission.course_id, Boolean(permission.allowed)]));
+              return <article key={`${item.user_type}:${item.id}`} className="admin-user-card">
+                <div className="admin-user-identity">
+                  <span>{item.role === "superadmin" ? "超級管理者" : item.user_type === "teacher" ? "教師" : "學生"}</span>
+                  <strong>{item.name}</strong>
+                  <small>{item.email || "未綁定 Email"}</small>
+                  {item.user_type === "student" && <small>{item.class_name} · {item.seat_no} 號 · 指導教師 {item.teacher_name}</small>}
+                </div>
+                <div className="admin-user-metrics">
+                  <span>最後登入<b>{prettyDate(item.last_login_at)}</b></span>
+                  <span>最近上線<b>{prettyDate(item.last_active_at)}</b></span>
+                  {item.user_type === "student" ? <>
+                    <span>解題狀況<b>{item.passed_count ?? 0}/{item.solved_count ?? 0} 通過</b></span>
+                    <span>徽章<b>{item.badge_count ?? 0} 枚</b></span>
+                  </> : <>
+                    <span>班級<b>{item.class_count ?? 0} 班</b></span>
+                    <span>學生<b>{item.student_count ?? 0} 人</b></span>
+                  </>}
+                </div>
+                <form className="admin-user-form" onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  void onAction({ action: "user_profile", userType: item.user_type, userId: item.id, schoolName: form.get("schoolName"), role: form.get("role"), status: form.get("status") }, "使用者資料已更新。");
+                }}>
+                  <label>學校<input name="schoolName" defaultValue={item.school_name ?? ""} placeholder="例如：宜蘭縣○○國小" /></label>
+                  <label>身分<select name="role" defaultValue={item.role} disabled={item.user_type === "student"}><option value="student">學生</option><option value="teacher">教師</option><option value="superadmin">超級管理者</option></select></label>
+                  <label>帳號狀態<select name="status" defaultValue={item.status}><option value="pending">待啟用</option><option value="active">啟用</option><option value="disabled">停用</option></select></label>
+                  <button disabled={busy}>儲存</button>
+                </form>
+                {item.user_type === "teacher" && item.role !== "superadmin" && publishedCourses.length > 0 && <details className="admin-permissions">
+                  <summary>課程使用權限</summary>
+                  <div>{publishedCourses.map((course) => {
+                    const allowed = permissions.get(course.id) ?? true;
+                    return <label key={course.id}><input type="checkbox" checked={allowed} disabled={busy} onChange={(event) => void onAction({ action: "course_permission", teacherId: item.id, courseId: course.id, allowed: event.target.checked }, event.target.checked ? "已開放課程。" : "已停用這位教師的課程權限。")}/><span>{course.title}</span></label>;
+                  })}</div>
+                </details>}
+              </article>;
+            })}
+            {visibleUsers.length === 0 && <p className="admin-empty">找不到符合條件的使用者。</p>}
+          </div>
       </section>
 
       <section className="admin-section">
-        <h3>所有班級與代碼</h3>
+        <h3>班級啟用與代碼</h3>
         <div className="admin-list">
           {dashboard.classes.map((item) => (
             <article key={item.id} className="admin-item admin-item--class">
@@ -1440,6 +1550,28 @@ function AdminConsole({
           ))}
         </div>
       </section>
+      <section className="admin-section">
+        <h3>近期使用紀錄</h3>
+        <div className="admin-activity-list">
+          {dashboard.activity.slice(0, 20).map((item) => <div key={item.id}><span>{item.user_name || "未知使用者"}</span><strong>{activityLabel(item.action)}</strong><time>{prettyDate(item.created_at)}</time></div>)}
+          {dashboard.activity.length === 0 && <p>尚無使用紀錄。</p>}
+        </div>
+      </section>
+      </> : <section className="admin-section admin-course-manager">
+        <div className="admin-section-heading">
+          <div><p className="eyebrow">Course packages</p><h3>課程管理</h3></div>
+          <div className="admin-course-actions"><a className="primary-link" href="/studio?source=admin">新增／匯入課程包</a><a className="text-link" href="/admin/courses">審核待發布課程</a></div>
+        </div>
+        <p className="admin-section-note">發布後的課程會出現在老師的公開課程庫；可在使用者管理中決定各教師能否採用。</p>
+        <div className="admin-course-list">
+          {dashboard.courses.map((course) => <article key={course.id}>
+            <div><span>{course.status === "published" ? "已發布" : course.version_status === "review" ? "待審核" : "草稿"}</span><h4>{course.title}</h4><p>{course.summary || "尚未填寫課程摘要。"}</p></div>
+            <dl><div><dt>版本</dt><dd>v{course.version_no}</dd></div><div><dt>章節</dt><dd>{course.lesson_count} 堂</dd></div><div><dt>採用</dt><dd>{course.adoption_count} 班</dd></div></dl>
+            <small>{course.owner_name} · {prettyDate(course.updated_at)}</small>
+          </article>)}
+          {dashboard.courses.length === 0 && <p className="admin-empty">尚未建立課程包。</p>}
+        </div>
+      </section>}
     </div>
   );
 }

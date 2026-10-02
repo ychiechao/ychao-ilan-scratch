@@ -103,6 +103,8 @@ export async function POST(request: Request) {
         : `尚缺 ${result.missing.length} 項檢核。`
     )
     .run();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'student', ?, 'chapter_attempt', ?)")
+    .bind(createId("activity"), studentId, JSON.stringify({ chapterNo, score: result.score, status })).run();
 
   if (result.passed && !usesExternalSubmission) {
     await awardBadge(db, studentId, chapterNo, chapter.badge);

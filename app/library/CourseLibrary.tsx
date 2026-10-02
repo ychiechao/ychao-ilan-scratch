@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
+import Link from "next/link";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../firebase-client";
 
 type LibraryCourse = {
@@ -122,14 +123,14 @@ export function CourseLibrary() {
     <main className="library-shell">
       <header className="library-header">
         <div>
-          <a href="/">← 回首頁</a>
+          <Link href="/">← 回首頁</Link>
           <p className="eyebrow">Public Course Library</p>
           <h1>Scratch 公開課程庫</h1>
           <p>所有課程皆經管理員審核；班級採用後固定使用當時版本。</p>
         </div>
         <div>
           {!signedIn && <button onClick={login}>Google 登入</button>}
-          <a href="/studio">前往課程設計室</a>
+          <Link href="/studio">前往課程設計室</Link>
         </div>
       </header>
       <div className="studio-message">{message}</div>

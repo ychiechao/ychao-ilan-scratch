@@ -29,9 +29,14 @@ export async function GET(request: Request) {
       (SELECT COUNT(*) FROM questions q JOIN lessons l ON l.id = q.lesson_id WHERE l.course_version_id = c.current_version_id) AS question_count
      FROM courses c JOIN teachers t ON t.id = c.owner_teacher_id
      JOIN course_versions cv ON cv.id = c.current_version_id
-     WHERE c.status = 'published' AND (? = '' OR c.title LIKE ? OR c.summary LIKE ? OR c.tags_json LIKE ?)
+     WHERE c.status = 'published'
+       AND (? = 1 OR NOT EXISTS (
+         SELECT 1 FROM teacher_course_permissions tcp
+         WHERE tcp.teacher_id = ? AND tcp.course_id = c.id AND tcp.allowed = 0
+       ))
+       AND (? = '' OR c.title LIKE ? OR c.summary LIKE ? OR c.tags_json LIKE ?)
      ORDER BY cv.published_at DESC, c.title`
-  ).bind(search, `%${search}%`, `%${search}%`, `%${search}%`).all();
+  ).bind(actor.teacher?.role === "superadmin" ? 1 : 0, actor.teacher?.id ?? "", search, `%${search}%`, `%${search}%`, `%${search}%`).all();
   let classes: unknown[] = [];
   let adoptions: unknown[] = [];
   if (actor.teacher?.status === "active") {
@@ -57,8 +62,12 @@ export async function POST(request: Request) {
   const allowed = await db.prepare(
     `SELECT cv.id FROM course_versions cv JOIN courses c ON c.id = cv.course_id
      JOIN classes cl ON cl.id = ? WHERE cv.id = ? AND cv.status = 'published'
-       AND c.current_version_id = cv.id AND cl.teacher_id = ? AND cl.status = 'active'`
-  ).bind(classId, versionId, actor.teacher.id).first();
+       AND c.current_version_id = cv.id AND cl.teacher_id = ? AND cl.status = 'active'
+       AND (? = 'superadmin' OR NOT EXISTS (
+         SELECT 1 FROM teacher_course_permissions tcp
+         WHERE tcp.teacher_id = ? AND tcp.course_id = c.id AND tcp.allowed = 0
+       ))`
+  ).bind(classId, versionId, actor.teacher.id, actor.teacher.role, actor.teacher.id).first();
   if (!allowed) return jsonError("找不到可採用的課程或班級。", 404);
   const existing = await db.prepare(
     `SELECT cc.id, cc.course_version_id FROM class_courses cc

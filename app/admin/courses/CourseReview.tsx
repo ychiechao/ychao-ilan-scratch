@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
+import Link from "next/link";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../../firebase-client";
 
 type Review = { version_id: string; version_no: number; course_id: string; title: string; summary: string; owner_name: string; owner_email: string; lesson_count: number; question_count: number };
@@ -51,9 +52,10 @@ export function CourseReview() {
     const link = document.createElement("a"); link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
   }
   return <main className="review-shell">
-    <header><div><a href="/">← 回首頁</a><p className="eyebrow">Administration</p><h1>公開課程審核</h1></div><button onClick={login}>超管 Google 登入</button></header>
+    <header><div><Link href="/?mode=admin">← 回超管後台</Link><p className="eyebrow">Course management</p><h1>課程包審核與發布</h1></div><div className="admin-course-actions"><Link className="primary-link" href="/studio?source=admin">新增／匯入課程包</Link><button onClick={login}>超管 Google 登入</button></div></header>
     <div className="studio-message">{message}</div>
     <section>
+      {reviews.length === 0 && <article className="studio-card"><h2>目前沒有待審課程</h2><p>可到課程設計室新增課程，或匯入特定課程 ZIP；送審後會出現在這裡。</p></article>}
       {reviews.map((item) => <article className="review-card" key={item.version_id}><div><span>v{item.version_no} · {item.lesson_count} 堂 · {item.question_count} 題</span><h2>{item.title}</h2><p>{item.summary}</p><small>{item.owner_name} · {item.owner_email}</small></div><div><button onClick={() => void preview(item.version_id)}>完整預覽</button><button onClick={() => void review(item.version_id, "approve")}>通過發布</button><button className="danger" onClick={() => void review(item.version_id, "reject")}>退回修改</button></div></article>)}
       {selected && <article className="studio-card review-preview"><button className="ghost" onClick={() => setSelected(null)}>關閉預覽</button><p className="eyebrow">v{selected.version.versionNo} · {selected.ownerName}</p><h2>{selected.title}</h2><p>{selected.summary}</p>{selected.lessons.map((lesson, index) => <section key={lesson.id}><h3>{index + 1}. {lesson.title}</h3><p>{lesson.objective}</p>{lesson.questions.map((question) => <div className="library-question" key={question.id}><strong>{question.title}</strong><p>{question.prompt}</p><small>{question.rules.length} 項規則 · {question.rules.reduce((sum, rule) => sum + rule.weight, 0)} 分</small>{question.referenceAssetId && <button onClick={() => void downloadReference(question.referenceAssetId!, question.referenceFileName || "reference.sb3")}>下載參考作品</button>}</div>)}</section>)}</article>}
     </section>

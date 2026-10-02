@@ -45,10 +45,12 @@ export async function POST(request: Request) {
   const status = role === "superadmin" ? "active" : "pending";
   await db
     .prepare(
-      "INSERT INTO teachers (id, name, email, firebase_uid, pin_hash, role, status) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO teachers (id, name, email, firebase_uid, pin_hash, role, status, last_login_at, last_active_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     )
     .bind(teacherId, name, email, firebaseUser.localId, teacherPinHash, role, status)
     .run();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action) VALUES (?, 'teacher', ?, 'register')")
+    .bind(createId("activity"), teacherId).run();
 
   if (role === "superadmin") {
     return Response.json({

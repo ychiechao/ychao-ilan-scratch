@@ -10,6 +10,9 @@ export const teachers = sqliteTable("teachers", {
   role: text("role").notNull().default("teacher"),
   status: text("status").notNull().default("pending"),
   mustChangePin: integer("must_change_pin").notNull().default(0),
+  schoolName: text("school_name").notNull().default(""),
+  lastLoginAt: text("last_login_at"),
+  lastActiveAt: text("last_active_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("teachers_email_idx").on(table.email),
@@ -38,6 +41,10 @@ export const students = sqliteTable("students", {
   email: text("email"),
   firebaseUid: text("firebase_uid"),
   pinHash: text("pin_hash").notNull(),
+  schoolName: text("school_name").notNull().default(""),
+  status: text("status").notNull().default("active"),
+  lastLoginAt: text("last_login_at"),
+  lastActiveAt: text("last_active_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("students_class_seat_idx").on(table.classId, table.seatNo),
@@ -162,6 +169,26 @@ export const questionResults = sqliteTable("question_results", {
 }, (table) => [
   uniqueIndex("question_results_student_question_idx").on(table.studentId, table.questionId),
 ]);
+
+export const teacherCoursePermissions = sqliteTable("teacher_course_permissions", {
+  id: text("id").primaryKey(),
+  teacherId: text("teacher_id").notNull().references(() => teachers.id),
+  courseId: text("course_id").notNull().references(() => courses.id),
+  allowed: integer("allowed").notNull().default(1),
+  updatedBy: text("updated_by").notNull().references(() => teachers.id),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("teacher_course_permissions_unique_idx").on(table.teacherId, table.courseId),
+]);
+
+export const userActivityLogs = sqliteTable("user_activity_logs", {
+  id: text("id").primaryKey(),
+  userType: text("user_type").notNull(),
+  userId: text("user_id").notNull(),
+  action: text("action").notNull(),
+  detailJson: text("detail_json").notNull().default("{}"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const submissions = sqliteTable("submissions", {
   id: text("id").primaryKey(),

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const db = await ensureDb();
   const classRow = await db
     .prepare(
-      `SELECT c.* FROM classes c
+      `SELECT c.*, t.school_name AS teacher_school FROM classes c
        JOIN teachers t ON t.id = c.teacher_id
        WHERE c.code = ? AND c.status = 'active' AND t.status = 'active'`
     )
@@ -72,9 +72,11 @@ export async function POST(request: Request) {
     }
 
     await db
-      .prepare("UPDATE students SET nickname = ?, email = ?, firebase_uid = ? WHERE id = ?")
-      .bind(nickname, email, firebaseUser.localId, student.id)
+      .prepare("UPDATE students SET nickname = ?, email = ?, firebase_uid = ?, status = 'active', school_name = CASE WHEN school_name = '' THEN ? ELSE school_name END, last_login_at = CURRENT_TIMESTAMP, last_active_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(nickname, email, firebaseUser.localId, String((classRow as { teacher_school?: string }).teacher_school ?? ""), student.id)
       .run();
+    await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action) VALUES (?, 'student', ?, 'join_class')")
+      .bind(createId("activity"), student.id).run();
     const updated = await db
       .prepare("SELECT * FROM students WHERE id = ?")
       .bind(student.id)
@@ -90,9 +92,9 @@ export async function POST(request: Request) {
   try {
     await db
       .prepare(
-        "INSERT INTO students (id, class_id, seat_no, nickname, email, firebase_uid, pin_hash) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO students (id, class_id, seat_no, nickname, email, firebase_uid, pin_hash, school_name, last_login_at, last_active_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
       )
-      .bind(studentId, (classRow as { id: string }).id, seatNo, nickname, email, firebaseUser.localId, pinHash)
+      .bind(studentId, (classRow as { id: string }).id, seatNo, nickname, email, firebaseUser.localId, pinHash, String((classRow as { teacher_school?: string }).teacher_school ?? ""))
       .run();
   } catch (error) {
     if (error instanceof FirebaseAuthError) return jsonError(error.message, error.status);
@@ -103,6 +105,8 @@ export async function POST(request: Request) {
     .prepare("SELECT * FROM students WHERE id = ?")
     .bind(studentId)
     .first();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action) VALUES (?, 'student', ?, 'join_class')")
+    .bind(createId("activity"), studentId).run();
 
   return Response.json(
     {

@@ -6,12 +6,14 @@ export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
     teacherId?: string;
     name?: string;
+    courseVersionId?: string;
   } | null;
 
   const actor = await requireTeacher(request);
   if (actor instanceof Response) return actor;
   const teacherId = actor.teacher.id;
   const name = cleanText(payload?.name) || "Scratch 基礎班";
+  const courseVersionId = cleanText(payload?.courseVersionId, 100);
 
   const db = await ensureDb();
   const teacher = await db
@@ -26,6 +28,16 @@ export async function POST(request: Request) {
     return jsonError("老師帳號尚未啟用，請等待超級管理者審核。", 403);
   }
 
+  if (courseVersionId) {
+    const allowedCourse = await db.prepare(
+      `SELECT cv.id FROM course_versions cv JOIN courses c ON c.id = cv.course_id
+       WHERE cv.id = ? AND cv.status = 'published' AND c.current_version_id = cv.id
+         AND NOT EXISTS (SELECT 1 FROM teacher_course_permissions tcp
+           WHERE tcp.teacher_id = ? AND tcp.course_id = c.id AND tcp.allowed = 0)`
+    ).bind(courseVersionId, teacherId).first();
+    if (!allowedCourse) return jsonError("選擇的課程目前無法使用。", 403);
+  }
+
   const classId = createId("cls");
   const code = await generateClassCode();
   await db
@@ -34,6 +46,11 @@ export async function POST(request: Request) {
     )
     .bind(classId, teacherId, name, code)
     .run();
+
+  if (courseVersionId) {
+    await db.prepare("INSERT INTO class_courses (id, class_id, course_version_id, sort_order, status) VALUES (?, ?, ?, 0, 'active')")
+      .bind(createId("adoption"), classId, courseVersionId).run();
+  }
 
   const classRow = await db
     .prepare("SELECT * FROM classes WHERE id = ?")

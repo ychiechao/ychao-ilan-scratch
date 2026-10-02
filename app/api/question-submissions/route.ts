@@ -29,5 +29,7 @@ export async function POST(request: Request) {
       analysis_json = excluded.analysis_json, results_json = excluded.results_json, score = excluded.score,
       status = excluded.status, updated_at = CURRENT_TIMESTAMP`)
     .bind(createId("result"), actor.student.id, questionId, fileName, fileSize, JSON.stringify(payload.analysis), JSON.stringify(evaluation.results), evaluation.score, status).run();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'student', ?, 'question_attempt', ?)")
+    .bind(createId("activity"), actor.student.id, JSON.stringify({ questionId, score: evaluation.score, status })).run();
   return Response.json({ evaluation: { ...evaluation, status } });
 }

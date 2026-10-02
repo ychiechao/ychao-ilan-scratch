@@ -1,5 +1,6 @@
 import {
   cleanText,
+  createId,
   jsonError,
   publicClass,
   publicStudent,
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
       `SELECT s.* FROM students s
        JOIN classes c ON c.id = s.class_id
        JOIN teachers t ON t.id = c.teacher_id
-       WHERE s.email = ? AND c.status = 'active' AND t.status = 'active'`
+       WHERE s.email = ? AND s.status = 'active' AND c.status = 'active' AND t.status = 'active'`
     )
     .bind(email)
     .first<{
@@ -43,8 +44,10 @@ export async function POST(request: Request) {
   if (!student) {
     return jsonError("找不到這個 Google 帳號的學生資料，請先加入班級。", 401);
   }
-  await db.prepare("UPDATE students SET firebase_uid = ? WHERE id = ?")
+  await db.prepare("UPDATE students SET firebase_uid = ?, last_login_at = CURRENT_TIMESTAMP, last_active_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(firebaseUser.localId, student.id).run();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action) VALUES (?, 'student', ?, 'login')")
+    .bind(createId("activity"), student.id).run();
 
   const classRow = await db
     .prepare("SELECT * FROM classes WHERE id = ?")

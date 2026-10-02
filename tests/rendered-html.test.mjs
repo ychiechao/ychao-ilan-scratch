@@ -46,18 +46,18 @@ test("server-renders the course platform shell", async () => {
 
 test("server-renders the new course platform entry pages", async () => {
   const cases = [
-    ["/studio", "Scratch 課程設計室"],
-    ["/library", "Scratch 公開課程庫"],
-    ["/learn", "我的班級課程"],
-    ["/admin/courses", "公開課程審核"],
-    ["/admin/storage", "Cloudflare 檔案儲存"],
+    ["/studio", "Scratch 課程設計室", "/"],
+    ["/library", "Scratch 公開課程庫", "/"],
+    ["/learn", "我的班級課程", "/"],
+    ["/admin/courses", "課程包審核與發布", "/?mode=admin"],
+    ["/admin/storage", "Cloudflare 檔案儲存", "/?mode=admin"],
   ];
-  for (const [path, text] of cases) {
+  for (const [path, text, backHref] of cases) {
     const response = await render(path);
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, new RegExp(text));
-    assert.match(html, path === "/admin/storage" ? /<a href="\/\?mode=admin">← 回超管後台<\/a>/ : /<a href="\/">← 回首頁<\/a>/);
+    assert.match(html, new RegExp(`<a href="${backHref.replace("?", "\\?")}">← 回${backHref === "/" ? "首頁" : "超管後台"}<\\/a>`));
   }
 });
 

@@ -30,6 +30,9 @@ const createStatements = [
     role TEXT NOT NULL DEFAULT 'teacher',
     status TEXT NOT NULL DEFAULT 'pending',
     must_change_pin INTEGER NOT NULL DEFAULT 0,
+    school_name TEXT NOT NULL DEFAULT '',
+    last_login_at TEXT,
+    last_active_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
   `CREATE TABLE IF NOT EXISTS classes (
@@ -52,6 +55,10 @@ const createStatements = [
     email TEXT,
     firebase_uid TEXT,
     pin_hash TEXT NOT NULL,
+    school_name TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'active',
+    last_login_at TEXT,
+    last_active_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id),
     UNIQUE (class_id, seat_no)
@@ -207,6 +214,26 @@ const createStatements = [
     FOREIGN KEY (question_id) REFERENCES questions(id),
     UNIQUE (student_id, question_id)
   )`,
+  `CREATE TABLE IF NOT EXISTS teacher_course_permissions (
+    id TEXT PRIMARY KEY,
+    teacher_id TEXT NOT NULL,
+    course_id TEXT NOT NULL,
+    allowed INTEGER NOT NULL DEFAULT 1,
+    updated_by TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    FOREIGN KEY (updated_by) REFERENCES teachers(id),
+    UNIQUE (teacher_id, course_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS user_activity_logs (
+    id TEXT PRIMARY KEY,
+    user_type TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
   `CREATE TABLE IF NOT EXISTS app_migrations (
     id TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -224,6 +251,9 @@ const createStatements = [
   `CREATE INDEX IF NOT EXISTS course_reviews_version_idx ON course_reviews (course_version_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS class_courses_class_idx ON class_courses (class_id, sort_order)`,
   `CREATE INDEX IF NOT EXISTS question_results_student_idx ON question_results (student_id, updated_at)`,
+  `CREATE INDEX IF NOT EXISTS teacher_course_permissions_teacher_idx ON teacher_course_permissions (teacher_id, course_id)`,
+  `CREATE INDEX IF NOT EXISTS user_activity_logs_user_idx ON user_activity_logs (user_type, user_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS user_activity_logs_created_idx ON user_activity_logs (created_at)`,
 ];
 
 export async function ensureDb() {
@@ -232,12 +262,33 @@ export async function ensureDb() {
   if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "firebase_uid")) {
     await db.prepare("ALTER TABLE teachers ADD firebase_uid TEXT").run();
   }
+  if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "school_name")) {
+    await db.prepare("ALTER TABLE teachers ADD school_name TEXT NOT NULL DEFAULT ''").run();
+  }
+  if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "last_login_at")) {
+    await db.prepare("ALTER TABLE teachers ADD last_login_at TEXT").run();
+  }
+  if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "last_active_at")) {
+    await db.prepare("ALTER TABLE teachers ADD last_active_at TEXT").run();
+  }
   const studentColumns = await db.prepare("PRAGMA table_info(students)").all<{ name: string }>();
-  if (!(studentColumns.results ?? []).some((column) => column.name === "email")) {
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "email")) {
     await db.prepare("ALTER TABLE students ADD email TEXT").run();
   }
   if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "firebase_uid")) {
     await db.prepare("ALTER TABLE students ADD firebase_uid TEXT").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "school_name")) {
+    await db.prepare("ALTER TABLE students ADD school_name TEXT NOT NULL DEFAULT ''").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "status")) {
+    await db.prepare("ALTER TABLE students ADD status TEXT NOT NULL DEFAULT 'active'").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "last_login_at")) {
+    await db.prepare("ALTER TABLE students ADD last_login_at TEXT").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "last_active_at")) {
+    await db.prepare("ALTER TABLE students ADD last_active_at TEXT").run();
   }
   const assetColumns = await db.prepare("PRAGMA table_info(file_assets)").all<{ name: string }>();
   if ((assetColumns.results ?? []).length > 0 && !(assetColumns.results ?? []).some((column) => column.name === "storage_provider")) {

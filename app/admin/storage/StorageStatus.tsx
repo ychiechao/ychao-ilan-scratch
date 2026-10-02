@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
+import Link from "next/link";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../../firebase-client";
 
 type StorageStatus = {
@@ -48,7 +49,7 @@ export function StorageStatusPanel() {
     <main className="drive-setup-shell">
       <header className="library-header">
         <div>
-          <a href="/?mode=admin">← 回超管後台</a>
+          <Link href="/?mode=admin">← 回超管後台</Link>
           <p className="eyebrow">File storage</p>
           <h1>Cloudflare 檔案儲存</h1>
           <p>教師參考作品由網站私密保存；學生作品仍只在學生裝置分析，不會上傳。</p>

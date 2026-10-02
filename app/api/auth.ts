@@ -35,8 +35,11 @@ export async function requireActor(request: Request): Promise<AuthActor | Respon
   const student = await db.prepare(
     `SELECT s.id, s.class_id, s.nickname, s.email FROM students s
      JOIN classes c ON c.id = s.class_id JOIN teachers t ON t.id = c.teacher_id
-     WHERE (s.firebase_uid = ? OR s.email = ?) AND c.status = 'active' AND t.status = 'active'`
+     WHERE (s.firebase_uid = ? OR s.email = ?) AND s.status = 'active' AND c.status = 'active' AND t.status = 'active'`
   ).bind(firebase.localId, email).first<{ id: string; class_id: string; nickname: string; email: string }>();
+
+  if (teacher) await db.prepare("UPDATE teachers SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?").bind(teacher.id).run();
+  if (student) await db.prepare("UPDATE students SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?").bind(student.id).run();
 
   return {
     firebase,

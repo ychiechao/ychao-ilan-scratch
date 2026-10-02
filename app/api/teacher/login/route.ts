@@ -1,4 +1,4 @@
-import { cleanText, jsonError, publicClass } from "../../_lib";
+import { cleanText, createId, jsonError, publicClass } from "../../_lib";
 import { ensureDb } from "../../../../db";
 import { FirebaseAuthError, verifyFirebaseIdToken } from "../../firebase-auth";
 
@@ -25,8 +25,10 @@ export async function POST(request: Request) {
   if (!teacher) {
     return jsonError("這個 Google 帳號尚未註冊老師身分。", 401);
   }
-  await db.prepare("UPDATE teachers SET firebase_uid = ? WHERE id = ?")
+  await db.prepare("UPDATE teachers SET firebase_uid = ?, last_login_at = CURRENT_TIMESTAMP, last_active_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(firebaseUser.localId, teacher.id).run();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action) VALUES (?, 'teacher', ?, 'login')")
+    .bind(createId("activity"), teacher.id).run();
 
   const classes = await db
     .prepare("SELECT * FROM classes WHERE teacher_id = ? ORDER BY created_at DESC")
