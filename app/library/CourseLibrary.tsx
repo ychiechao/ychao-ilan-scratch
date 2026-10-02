@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../firebase-client";
+import { HardNavigationLink } from "../HardNavigationLink";
 
 type LibraryCourse = {
   id: string; title: string; summary: string; school_year: string; region: string;
@@ -123,7 +124,7 @@ export function CourseLibrary() {
     <main className="library-shell">
       <header className="library-header">
         <div>
-          <Link href="/?mode=map" onClick={(event) => { event.preventDefault(); window.location.assign("/?mode=map"); }}>← 回課程地圖</Link>
+          <HardNavigationLink href="/?mode=map">← 回課程地圖</HardNavigationLink>
           <p className="eyebrow">Public Course Library</p>
           <h1>Scratch 公開課程庫</h1>
           <p>所有課程皆經管理員審核；班級採用後固定使用當時版本。</p>
