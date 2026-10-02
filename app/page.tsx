@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { CourseApp, type AppMode } from "./CourseApp";
-import { CourseLibrary } from "./library/CourseLibrary";
 
 export const metadata: Metadata = {
   title: "Scratch 公開課程庫｜宜蘭 Scratch",
@@ -11,10 +10,11 @@ type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const legacyModes = new Set<AppMode>(["student", "teacher", "admin", "map", "chapter"]);
+const modes = new Set<AppMode>(["library", "student", "teacher", "admin", "map", "chapter"]);
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const mode = typeof params.mode === "string" ? params.mode : "";
-  return legacyModes.has(mode as AppMode) ? <CourseApp initialModeValue={mode as AppMode} /> : <CourseLibrary />;
+  const initialMode = modes.has(mode as AppMode) ? mode as AppMode : "library";
+  return <CourseApp initialModeValue={initialMode} />;
 }

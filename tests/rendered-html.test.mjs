@@ -31,8 +31,14 @@ test("server-renders the public course library as the homepage", async () => {
   assert.match(html, /<title>Scratch 公開課程庫｜宜蘭 Scratch<\/title>/i);
   assert.match(html, /Scratch 公開課程庫/);
   assert.match(html, /搜尋課程名稱、摘要或標籤/);
-  assert.doesNotMatch(html, /回課程地圖/);
-  assert.doesNotMatch(html, /前往課程設計室/);
+  assert.match(html, /公開課程庫/);
+  assert.match(html, /我的班級課程/);
+  assert.match(html, /課程設計室/);
+  assert.match(html, /學生入口/);
+  assert.match(html, /老師後台/);
+  assert.match(html, /超管後台/);
+  assert.match(html, /課程地圖/);
+  assert.match(html, /<button class="active">公開課程庫<\/button>/);
 });
 
 test("server-renders the legacy course platform by mode", async () => {
@@ -44,7 +50,7 @@ test("server-renders the legacy course platform by mode", async () => {
   assert.match(html, /Scratch 基本環境/);
   assert.match(html, /完整專題：防疫大作戰/);
   assert.match(html, /aria-label="回到課程地圖"[^>]*>\s*宜蘭 Scratch 基礎課程/);
-  assert.doesNotMatch(html, /class="hero__actions"/);
+  assert.match(html, /class="hero__actions"/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
 

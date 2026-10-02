@@ -4,8 +4,9 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
 import { authorizedFetch, signInWithGoogle, signOutFirebase } from "./firebase-client";
+import { CourseLibrary } from "./library/CourseLibrary";
 
-export type AppMode = "student" | "teacher" | "admin" | "map" | "chapter";
+export type AppMode = "library" | "student" | "teacher" | "admin" | "map" | "chapter";
 
 type Teacher = {
   id: string;
@@ -189,11 +190,11 @@ function accountStatusLabel(status?: string) {
 }
 
 function initialMode(): AppMode {
-  if (typeof window === "undefined") return "student";
+  if (typeof window === "undefined") return "library";
 
   const mode = new URLSearchParams(window.location.search).get("mode");
-  if (mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
-  return "student";
+  if (mode === "library" || mode === "student" || mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
+  return "library";
 }
 
 function initialChapter() {
@@ -775,6 +776,25 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
           <p className="hero__copy">
             12 堂射擊遊戲課程，學生在裝置上完成自我檢核，老師以自選雲端收件並掌握進度。
           </p>
+          <div className="hero__actions">
+            <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>
+              公開課程庫
+            </button>
+            <a className="hero-link" href="/learn">我的班級課程</a>
+            <a className="hero-link" href="/studio">課程設計室</a>
+            <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>
+              學生入口
+            </button>
+            <button onClick={() => setMode("teacher")} className={mode === "teacher" ? "active" : ""}>
+              老師後台
+            </button>
+            <button onClick={() => setMode("admin")} className={mode === "admin" ? "active" : ""}>
+              超管後台
+            </button>
+            <button onClick={() => setMode("map")} className={mode === "map" ? "active" : ""}>
+              課程地圖
+            </button>
+          </div>
         </div>
         <div className="hero__board" aria-label="課程進度總覽">
           <div>
@@ -794,8 +814,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
       {notice && <div className={`notice notice--${notice.type}`}>{notice.text}</div>}
 
-      <section className={`layout ${mode === "teacher" || mode === "admin" ? "layout--backend" : ""}`}>
-        {mode !== "teacher" && mode !== "admin" && (
+      <section className={`layout ${mode === "library" || mode === "teacher" || mode === "admin" ? "layout--backend" : ""}`}>
+        {mode !== "library" && mode !== "teacher" && mode !== "admin" && (
           <aside className="chapter-rail">
             <div className="rail-head">
               <span>章節</span>
@@ -824,6 +844,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         )}
 
         <section className="workspace">
+          {mode === "library" && <CourseLibrary embedded />}
+
           {mode === "student" && (
             <div className="surface" id="student-entry">
               <div className="section-title">

@@ -36,7 +36,7 @@ function libraryFetch(path: string, authenticated: boolean) {
   return authenticated ? authorizedFetch(path) : fetch(path);
 }
 
-export function CourseLibrary() {
+export function CourseLibrary({ embedded = false }: { embedded?: boolean }) {
   const [courses, setCourses] = useState<LibraryCourse[]>([]);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [adoptions, setAdoptions] = useState<Adoption[]>([]);
@@ -113,8 +113,10 @@ export function CourseLibrary() {
     }
   }
 
+  const Shell = embedded ? "div" : "main";
+
   return (
-    <main className="library-shell">
+    <Shell className={`library-shell ${embedded ? "library-shell--embedded" : ""}`}>
       <header className="library-header">
         <div>
           <p className="eyebrow">Public Course Library</p>
@@ -196,6 +198,6 @@ export function CourseLibrary() {
           </aside>
         )}
       </div>
-    </main>
+    </Shell>
   );
 }
