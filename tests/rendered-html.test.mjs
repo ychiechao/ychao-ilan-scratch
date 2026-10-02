@@ -32,13 +32,15 @@ test("server-renders the public course library as the homepage", async () => {
   assert.match(html, /Scratch 公開課程庫/);
   assert.match(html, /搜尋課程名稱、摘要或標籤/);
   assert.match(html, /公開課程庫/);
-  assert.match(html, /我的班級課程/);
-  assert.match(html, /課程設計室/);
-  assert.match(html, /學生入口/);
-  assert.match(html, /老師後台/);
-  assert.match(html, /超管後台/);
+  assert.match(html, /Google 登入/);
+  assert.match(html, /我的課程/);
+  assert.match(html, /課程管理/);
+  assert.match(html, /加入班級/);
+  assert.match(html, /班級管理/);
+  assert.match(html, /系統管理/);
   assert.match(html, /課程地圖/);
   assert.match(html, /<button class="active">公開課程庫<\/button>/);
+  assert.doesNotMatch(html, /href="\/learn"|href="\/studio"/);
 });
 
 test("server-renders the legacy course platform by mode", async () => {

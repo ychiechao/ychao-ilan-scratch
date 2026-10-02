@@ -1,12 +1,21 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
-import { authorizedFetch, signInWithGoogle, signOutFirebase } from "./firebase-client";
+import { authorizedFetch, firebaseAuth, signInWithGoogle, signOutFirebase } from "./firebase-client";
 import { CourseLibrary } from "./library/CourseLibrary";
 
 export type AppMode = "library" | "student" | "teacher" | "admin" | "map" | "chapter";
+
+type PortalRole = "superadmin" | "teacher" | "student" | "unknown";
+type PortalIdentity = {
+  role: PortalRole;
+  name: string;
+  email: string;
+  status: string;
+};
 
 type Teacher = {
   id: string;
@@ -189,6 +198,13 @@ function accountStatusLabel(status?: string) {
   return "待審核";
 }
 
+function portalRoleLabel(role?: PortalRole) {
+  if (role === "superadmin") return "超級管理者";
+  if (role === "teacher") return "教師";
+  if (role === "student") return "學生";
+  return "未建立身分";
+}
+
 function initialMode(): AppMode {
   if (typeof window === "undefined") return "library";
 
@@ -251,6 +267,24 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
   const [checked, setChecked] = useState<Record<number, string[]>>({});
   const [scratchResults, setScratchResults] = useState<Record<string, ScratchAnalysis>>({});
   const [selectedChapter, setSelectedChapter] = useState(initialChapter);
+  const [identity, setIdentity] = useState<PortalIdentity | null>(null);
+  const [identityBusy, setIdentityBusy] = useState(false);
+
+  const loadIdentity = useCallback(async () => {
+    const data = await readJson<{ identity: PortalIdentity }>(await authorizedFetch("/api/session"));
+    setIdentity(data.identity);
+    return data.identity;
+  }, []);
+
+  useEffect(() => onAuthStateChanged(firebaseAuth, (user) => {
+    if (!user) {
+      setIdentity(null);
+      setIdentityBusy(false);
+      return;
+    }
+    setIdentityBusy(true);
+    void loadIdentity().catch(() => setIdentity(null)).finally(() => setIdentityBusy(false));
+  }), [loadIdentity]);
 
   useEffect(() => {
     if (!admin?.id) return;
@@ -279,6 +313,98 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
   function show(type: NoticeType, text: string) {
     setNotice({ type, text });
+  }
+
+  async function authenticatePortal() {
+    setBusy(true);
+    setIdentityBusy(true);
+    try {
+      if (!firebaseAuth.currentUser) await signInWithGoogle();
+      const current = await loadIdentity();
+      if (current.role === "unknown") {
+        show("error", "這個 Google 帳號尚未加入班級或建立教師帳號。");
+      } else {
+        show("success", `已以${portalRoleLabel(current.role)}身分登入。`);
+      }
+      return current;
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "登入失敗。");
+      return null;
+    } finally {
+      setBusy(false);
+      setIdentityBusy(false);
+    }
+  }
+
+  async function requirePortalRole(roles: PortalRole[], feature: string) {
+    const current = identity ?? await authenticatePortal();
+    if (!current) return null;
+    if (!roles.includes(current.role)) {
+      show("error", `目前是${portalRoleLabel(current.role)}身分，無法使用「${feature}」。`);
+      return null;
+    }
+    return current;
+  }
+
+  async function openMyCourses() {
+    if (await requirePortalRole(["student"], "我的課程")) window.location.assign("/learn");
+  }
+
+  async function openCourseStudio() {
+    if (await requirePortalRole(["teacher", "superadmin"], "課程管理")) window.location.assign("/studio");
+  }
+
+  async function openTeacherDashboard() {
+    if (!await requirePortalRole(["teacher", "superadmin"], "班級管理")) return;
+    const user = firebaseAuth.currentUser;
+    if (!user) return;
+    setBusy(true);
+    try {
+      const data = await readJson<{ teacher: Teacher; classes: ClassInfo[] }>(
+        await fetch("/api/teacher/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ idToken: await user.getIdToken() }),
+        })
+      );
+      setTeacher(data.teacher);
+      setClasses(data.classes);
+      setSelectedClassId(data.classes[0]?.id ?? "");
+      localStorage.setItem("scratch-teacher", JSON.stringify(data.teacher));
+      localStorage.setItem("scratch-classes", JSON.stringify(data.classes));
+      setMode("teacher");
+      if (data.classes[0] && data.teacher.status === "active") {
+        await refreshDashboard(data.classes[0].id, data.teacher.id);
+      }
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法開啟班級管理。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openAdminDashboard() {
+    if (!await requirePortalRole(["superadmin"], "系統管理")) return;
+    const user = firebaseAuth.currentUser;
+    if (!user) return;
+    setBusy(true);
+    try {
+      const data = await readJson<{ admin: Teacher }>(
+        await fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ idToken: await user.getIdToken() }),
+        })
+      );
+      setAdmin(data.admin);
+      localStorage.setItem("scratch-admin", JSON.stringify(data.admin));
+      setMode("admin");
+      await refreshAdmin(data.admin.id);
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法開啟系統管理。");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function refreshStudent() {
@@ -330,6 +456,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       );
       setStudent(data.student);
       setStudentClass(data.class);
+      setIdentity({ role: "student", name: data.student.nickname, email: data.student.email || google.email, status: "active" });
       localStorage.setItem("scratch-student", JSON.stringify(data.student));
       localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
       await refreshStudent();
@@ -355,6 +482,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       );
       setStudent(data.student);
       setStudentClass(data.class);
+      setIdentity({ role: "student", name: data.student.nickname, email: data.student.email || google.email, status: "active" });
       localStorage.setItem("scratch-student", JSON.stringify(data.student));
       localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
       await refreshStudent();
@@ -527,6 +655,12 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       );
       setTeacher(data.teacher);
       setClasses(data.classes);
+      setIdentity({
+        role: data.teacher.role === "superadmin" ? "superadmin" : "teacher",
+        name: data.teacher.name,
+        email: data.teacher.email,
+        status: data.teacher.status || "pending",
+      });
       setSelectedClassId(data.classes[0]?.id ?? "");
       setDashboard({
         class: data.classes[0] ?? null,
@@ -573,6 +707,12 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       );
       setTeacher(data.teacher);
       setClasses(data.classes);
+      setIdentity({
+        role: data.teacher.role === "superadmin" ? "superadmin" : "teacher",
+        name: data.teacher.name,
+        email: data.teacher.email,
+        status: data.teacher.status || "pending",
+      });
       setSelectedClassId(data.classes[0]?.id ?? "");
       localStorage.setItem("scratch-teacher", JSON.stringify(data.teacher));
       localStorage.setItem("scratch-classes", JSON.stringify(data.classes));
@@ -644,6 +784,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         })
       );
       setAdmin(data.admin);
+      setIdentity({ role: "superadmin", name: data.admin.name, email: data.admin.email, status: "active" });
       localStorage.setItem("scratch-admin", JSON.stringify(data.admin));
       await refreshAdmin(data.admin.id);
       show("success", "超級管理後台已登入。");
@@ -733,32 +874,39 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     });
   }
 
-  function logoutStudent() {
-    void signOutFirebase();
+  async function logoutPortal() {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
+    await signOutFirebase().catch(() => null);
     localStorage.removeItem("scratch-student");
     localStorage.removeItem("scratch-student-class");
+    localStorage.removeItem("scratch-teacher");
+    localStorage.removeItem("scratch-classes");
+    localStorage.removeItem("scratch-admin");
     setStudent(null);
     setStudentClass(null);
     setSubmissions([]);
     setBadges([]);
     setScratchResults({});
-  }
-
-  function logoutTeacher() {
-    void signOutFirebase();
-    localStorage.removeItem("scratch-teacher");
-    localStorage.removeItem("scratch-classes");
     setTeacher(null);
     setClasses([]);
     setDashboard(emptyDashboard);
+    setAdmin(null);
+    setAdminDashboard(emptyAdminDashboard);
+    setIdentity(null);
+    setMode("library");
+    show("info", "已登出帳號。");
+  }
+
+  function logoutStudent() {
+    void logoutPortal();
+  }
+
+  function logoutTeacher() {
+    void logoutPortal();
   }
 
   async function logoutAdmin() {
-    await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
-    await signOutFirebase().catch(() => null);
-    localStorage.removeItem("scratch-admin");
-    setAdmin(null);
-    setAdminDashboard(emptyAdminDashboard);
+    await logoutPortal();
   }
 
   const selected = chapters.find((chapter) => chapter.no === selectedChapter) ?? chapters[0];
@@ -766,6 +914,21 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
   return (
     <main>
       <section className="hero">
+        <div className="hero__account">
+          {identity ? (
+            <>
+              <div>
+                <span>{portalRoleLabel(identity.role)}</span>
+                <strong>{identity.name}</strong>
+              </div>
+              <button type="button" onClick={() => void logoutPortal()}>登出</button>
+            </>
+          ) : (
+            <button type="button" disabled={identityBusy || busy} onClick={() => void authenticatePortal()}>
+              {identityBusy ? "確認登入狀態…" : "Google 登入"}
+            </button>
+          )}
+        </div>
         <div className="hero__content">
           <p className="eyebrow">宜蘭縣國小程式設計自學</p>
           <h1>
@@ -780,16 +943,20 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
             <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>
               公開課程庫
             </button>
-            <a className="hero-link" href="/learn">我的班級課程</a>
-            <a className="hero-link" href="/studio">課程設計室</a>
+            <button onClick={() => void openMyCourses()}>
+              我的課程
+            </button>
+            <button onClick={() => void openCourseStudio()}>
+              課程管理
+            </button>
             <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>
-              學生入口
+              加入班級
             </button>
-            <button onClick={() => setMode("teacher")} className={mode === "teacher" ? "active" : ""}>
-              老師後台
+            <button onClick={() => void openTeacherDashboard()} className={mode === "teacher" ? "active" : ""}>
+              班級管理
             </button>
-            <button onClick={() => setMode("admin")} className={mode === "admin" ? "active" : ""}>
-              超管後台
+            <button onClick={() => void openAdminDashboard()} className={mode === "admin" ? "active" : ""}>
+              系統管理
             </button>
             <button onClick={() => setMode("map")} className={mode === "map" ? "active" : ""}>
               課程地圖

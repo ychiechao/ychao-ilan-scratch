@@ -151,6 +151,55 @@ main {
   color: white;
 }
 
+.hero__account {
+  align-items: center;
+  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.96);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px;
+  position: absolute;
+  right: clamp(20px, 5vw, 72px);
+  top: 24px;
+  z-index: 3;
+}
+
+.hero__account > div {
+  display: grid;
+  line-height: 1.2;
+  min-width: 120px;
+  padding-left: 8px;
+}
+
+.hero__account span {
+  color: var(--green);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.hero__account strong {
+  font-size: 0.9rem;
+  margin-top: 3px;
+}
+
+.hero__account button {
+  background: var(--ink);
+  border-radius: 7px;
+  color: white;
+  font-weight: 900;
+  min-height: 36px;
+  padding: 0 13px;
+}
+
+.hero__account button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .hero__board {
   align-content: stretch;
   display: grid;
@@ -159,7 +208,7 @@ main {
   max-width: 430px;
   position: absolute;
   right: clamp(20px, 5vw, 72px);
-  top: 24px;
+  top: 92px;
   z-index: 2;
 }
 
@@ -1781,7 +1830,12 @@ td:first-child span {
     background-size: cover;
     min-height: 680px;
     padding-bottom: 26px;
-    padding-top: 38px;
+    padding-top: 20px;
+  }
+
+  .hero__account {
+    justify-self: end;
+    position: static;
   }
 
   .hero__content h1 {
