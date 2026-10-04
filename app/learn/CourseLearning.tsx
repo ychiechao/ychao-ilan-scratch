@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 import { authorizedFetch, firebaseAuth, signInWithGoogle } from "../firebase-client";
@@ -20,6 +20,8 @@ type CourseItem = {
   lesson_count: number;
   question_count: number;
   passed_count: number;
+  assignment_enabled: number;
+  project_url?: string;
 };
 
 type CourseDetail = {
@@ -56,6 +58,9 @@ export function CourseLearning() {
   const [membershipId, setMembershipId] = useState("");
   const [className, setClassName] = useState("");
   const [selectedAdoptionId, setSelectedAdoptionId] = useState("");
+  const [assignmentEnabled, setAssignmentEnabled] = useState(false);
+  const [projectUrl, setProjectUrl] = useState("");
+  const [savedProjectUrl, setSavedProjectUrl] = useState("");
   const [message, setMessage] = useState("請使用已加入班級的學生 Google 帳號登入。");
   const [busy, setBusy] = useState(false);
 
@@ -95,12 +100,16 @@ export function CourseLearning() {
         progress: Progress[];
         membershipId: string;
         class: { id: string; name: string };
+        assignment: { enabled: boolean; projectUrl: string };
       }>(await authorizedFetch(`/api/student/courses?${query}`));
       setCourse(data.course);
       setProgress(data.progress);
       setMembershipId(data.membershipId);
       setClassName(data.class.name);
       setSelectedAdoptionId(item.adoption_id);
+      setAssignmentEnabled(data.assignment.enabled);
+      setProjectUrl(data.assignment.projectUrl);
+      setSavedProjectUrl(data.assignment.projectUrl);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "讀取失敗。");
     }
@@ -132,6 +141,29 @@ export function CourseLearning() {
     }
   }
 
+  async function submitProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!membershipId || !selectedAdoptionId || !projectUrl) return;
+    setBusy(true);
+    try {
+      const data = await json<{ projectUrl: string }>(await authorizedFetch("/api/course-projects", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ membershipId, adoptionId: selectedAdoptionId, projectUrl }),
+      }));
+      setProjectUrl(data.projectUrl);
+      setSavedProjectUrl(data.projectUrl);
+      setCourses((current) => current.map((item) => item.adoption_id === selectedAdoptionId
+        ? { ...item, project_url: data.projectUrl }
+        : item));
+      setMessage("作業網址已儲存，老師可以直接開啟查看。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "作業網址儲存失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const status = (id: string) => progress.find((item) => item.question_id === id);
 
   return (
@@ -160,6 +192,7 @@ export function CourseLearning() {
               <small>{item.class_name}</small>
               <strong>{item.title}</strong>
               <span>v{item.version_no} · {item.passed_count}/{item.question_count} 題完成</span>
+              {Boolean(item.assignment_enabled) && <span>{item.project_url ? "作業已繳交" : "作業已開啟"}</span>}
             </button>
           ))}
         </aside>
@@ -173,6 +206,29 @@ export function CourseLearning() {
                 <h2>{course.title}</h2>
                 <p>{course.summary}</p>
               </div>
+              {assignmentEnabled && (
+                <form className="course-project-submit" onSubmit={submitProject}>
+                  <div>
+                    <p className="eyebrow">Course Assignment</p>
+                    <h3>課程作業</h3>
+                    <p>貼上你的作品網址。重新儲存會更新老師看到的連結。</p>
+                  </div>
+                  <label>
+                    作品網址
+                    <input
+                      type="url"
+                      value={projectUrl}
+                      onChange={(event) => setProjectUrl(event.target.value)}
+                      placeholder="https://s3.ilc.edu.tw/projects/356121701/"
+                      required
+                    />
+                  </label>
+                  <div className="course-project-submit__actions">
+                    {savedProjectUrl && <a href={savedProjectUrl} target="_blank" rel="noreferrer">查看作品</a>}
+                    <button disabled={busy}>儲存作業網址</button>
+                  </div>
+                </form>
+              )}
               {course.lessons.map((lesson, index) => (
                 <article className="studio-card learning-lesson" key={lesson.id}>
                   <h2>{index + 1}. {lesson.title}</h2>

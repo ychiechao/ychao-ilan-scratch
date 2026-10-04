@@ -93,6 +93,8 @@ export async function DELETE(request: Request) {
   await db.batch([
     db.prepare("DELETE FROM badges WHERE student_id = ?").bind(studentId),
     db.prepare("DELETE FROM submissions WHERE student_id = ?").bind(studentId),
+    db.prepare("DELETE FROM question_results WHERE student_id = ?").bind(studentId),
+    db.prepare("DELETE FROM course_project_submissions WHERE student_id = ?").bind(studentId),
     db.prepare("DELETE FROM students WHERE id = ?").bind(studentId),
   ]);
   return Response.json({ ok: true });

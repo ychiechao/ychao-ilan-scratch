@@ -1186,39 +1186,61 @@ button.danger {
   margin-bottom: 18px;
 }
 
-.submission-settings {
-  align-items: end;
+.course-assignment-settings {
   background: #eef3ee;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
-  gap: 12px;
-  grid-template-columns: 0.8fr 1fr minmax(220px, 1.8fr) auto;
+  gap: 14px;
   margin-bottom: 18px;
   padding: 16px;
 }
 
-.submission-settings div {
+.course-assignment-settings > div:first-child,
+.course-assignment-list,
+.course-assignment-list label > span {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 
-.submission-settings span {
+.course-assignment-settings h3,
+.course-assignment-settings p {
+  margin: 0;
+}
+
+.course-assignment-settings > div:first-child > span,
+.course-assignment-list small {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
-.submission-settings a {
+.course-assignment-list {
+  gap: 8px;
+}
+
+.course-assignment-list label {
+  align-items: center;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto 86px;
+  padding: 11px 12px;
+}
+
+.course-assignment-list input[type="checkbox"],
+.assignment-toggle input[type="checkbox"] {
+  accent-color: var(--green-dark);
+  height: 22px;
+  min-height: 0;
+  width: 22px;
+}
+
+.course-assignment-list b {
   color: var(--green-dark);
-  font-size: 0.88rem;
-  font-weight: 900;
-  grid-column: 1 / -1;
-}
-
-.submission-settings__hint {
-  color: var(--muted);
-  grid-column: 1 / -1;
-  line-height: 1.5;
+  font-size: 0.82rem;
+  text-align: right;
 }
 
 .review-actions {
@@ -1952,7 +1974,6 @@ td:first-child span {
   .form-grid,
   .teacher-auth,
   .teacher-tools,
-  .submission-settings,
   .external-submit,
   .chapter-preview__grid,
   .chapter-preview__video,
@@ -2203,6 +2224,7 @@ td:first-child span {
 .adopt-box { background: #eef4ef; display: grid; gap: 8px; margin-top: 18px; padding: 12px; }
 .adoption-row { background: #f8faff; border: 1px solid #dbe4ff; border-radius: 8px; display: grid; gap: 7px; padding: 10px; }
 .adoption-row > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.assignment-toggle { align-items: center; display: flex; font-size: .84rem; font-weight: 900; gap: 7px; }
 .admin-storage-required { background: #fff8d8; border: 2px solid #e5b92f; border-radius: 10px; padding: 24px; }
 .admin-storage-required h3 { font-size: 1.5rem; margin: 5px 0 8px; }
 .primary-link { background: var(--ink); border-radius: 7px; color: white; display: inline-flex; font-weight: 900; margin-top: 8px; padding: 10px 14px; text-decoration: none; }
@@ -2240,6 +2262,18 @@ td:first-child span {
 .learning-question h3,
 .learning-question p { margin: 0 0 6px; }
 .learning-question > div:last-child { display: grid; gap: 8px; justify-items: end; }
+.course-project-submit { align-items: end; background: #eef7f1; border: 1px solid #a9cfb8; border-radius: 8px; display: grid; gap: 14px; grid-template-columns: minmax(190px, .8fr) minmax(260px, 1.5fr) auto; padding: 16px; }
+.course-project-submit h3,
+.course-project-submit p { margin: 0; }
+.course-project-submit > div:first-child { display: grid; gap: 5px; }
+.course-project-submit label { display: grid; font-size: .84rem; font-weight: 900; gap: 6px; }
+.course-project-submit__actions { align-items: stretch; display: grid; gap: 7px; }
+.course-project-submit__actions a,
+.course-project-cell a { background: var(--ink); border-radius: 6px; color: white; font-size: .78rem; font-weight: 900; padding: 7px 9px; text-align: center; text-decoration: none; }
+.course-project-cell { min-width: 120px; }
+.course-project-cell a,
+.course-project-cell span { display: block; margin: 4px 0; }
+.course-project-cell span { color: var(--muted); font-size: .78rem; }
 
 @media (max-width: 900px) {
   .studio-header,
@@ -2255,7 +2289,8 @@ td:first-child span {
   .rule-row,
   .review-card { grid-template-columns: 1fr; }
   .learning-layout,
-  .learning-question { grid-template-columns: 1fr; }
+  .learning-question,
+  .course-project-submit { grid-template-columns: 1fr; }
   .learning-question > div:last-child { justify-items: stretch; }
   .drive-status-card,
   .drive-setup-grid { grid-template-columns: 1fr; }
@@ -2269,4 +2304,9 @@ td:first-child span {
   .admin-user-form { grid-template-columns: 1fr; }
   .admin-activity-list > div { grid-template-columns: 1fr; gap: 3px; }
   .admin-course-list small { text-align: left; }
+}
+
+@media (max-width: 640px) {
+  .course-assignment-list label { grid-template-columns: minmax(0, 1fr) auto; }
+  .course-assignment-list b { grid-column: 1 / -1; text-align: left; }
 }

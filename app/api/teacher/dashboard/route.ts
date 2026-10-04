@@ -58,6 +58,23 @@ export async function GET(request: Request) {
     )
     .bind(classId)
     .all();
+  const courses = await db.prepare(
+    `SELECT cc.id, cc.status, cc.assignment_enabled, c.title
+     FROM class_courses cc
+     JOIN course_versions cv ON cv.id = cc.course_version_id
+     JOIN courses c ON c.id = cv.course_id
+     WHERE cc.class_id = ?
+     ORDER BY cc.sort_order, cc.created_at`
+  ).bind(classId).all();
+  const courseProjects = await db.prepare(
+    `SELECT cps.id, cps.class_course_id, cps.student_id, cps.project_url, cps.updated_at, c.title AS course_title
+     FROM course_project_submissions cps
+     JOIN class_courses cc ON cc.id = cps.class_course_id
+     JOIN course_versions cv ON cv.id = cc.course_version_id
+     JOIN courses c ON c.id = cv.course_id
+     WHERE cc.class_id = ?
+     ORDER BY c.title, cps.updated_at DESC`
+  ).bind(classId).all();
 
   return Response.json({
     class: classRow,
@@ -65,5 +82,7 @@ export async function GET(request: Request) {
     students: students.results ?? [],
     submissions: submissions.results ?? [],
     badges: badges.results ?? [],
+    courses: courses.results ?? [],
+    courseProjects: courseProjects.results ?? [],
   });
 }

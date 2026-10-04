@@ -40,7 +40,7 @@ const createStatements = [
     teacher_id TEXT NOT NULL,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
-    submission_url TEXT NOT NULL DEFAULT 'https://s3.ilc.edu.tw/',
+    submission_url TEXT NOT NULL DEFAULT '',
     submission_label TEXT NOT NULL DEFAULT '宜蘭 Scratch 作品',
     status TEXT NOT NULL DEFAULT 'pending',
     reviewed_at TEXT,
@@ -194,10 +194,22 @@ const createStatements = [
     course_version_id TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'active',
+    assignment_enabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id),
     FOREIGN KEY (course_version_id) REFERENCES course_versions(id),
     UNIQUE (class_id, course_version_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS course_project_submissions (
+    id TEXT PRIMARY KEY,
+    class_course_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    project_url TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_course_id) REFERENCES class_courses(id),
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    UNIQUE (class_course_id, student_id)
   )`,
   `CREATE TABLE IF NOT EXISTS question_results (
     id TEXT PRIMARY KEY,
@@ -251,6 +263,7 @@ const createStatements = [
   `CREATE INDEX IF NOT EXISTS rubric_rules_question_idx ON rubric_rules (question_id, sort_order)`,
   `CREATE INDEX IF NOT EXISTS course_reviews_version_idx ON course_reviews (course_version_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS class_courses_class_idx ON class_courses (class_id, sort_order)`,
+  `CREATE INDEX IF NOT EXISTS course_project_submissions_student_idx ON course_project_submissions (student_id, updated_at)`,
   `CREATE INDEX IF NOT EXISTS question_results_student_idx ON question_results (student_id, updated_at)`,
   `CREATE INDEX IF NOT EXISTS teacher_course_permissions_teacher_idx ON teacher_course_permissions (teacher_id, course_id)`,
   `CREATE INDEX IF NOT EXISTS user_activity_logs_user_idx ON user_activity_logs (user_type, user_id, created_at)`,
@@ -294,6 +307,10 @@ export async function ensureDb() {
   const submissionColumns = await db.prepare("PRAGMA table_info(submissions)").all<{ name: string }>();
   if ((submissionColumns.results ?? []).length > 0 && !(submissionColumns.results ?? []).some((column) => column.name === "project_url")) {
     await db.prepare("ALTER TABLE submissions ADD project_url TEXT NOT NULL DEFAULT ''").run();
+  }
+  const classCourseColumns = await db.prepare("PRAGMA table_info(class_courses)").all<{ name: string }>();
+  if ((classCourseColumns.results ?? []).length > 0 && !(classCourseColumns.results ?? []).some((column) => column.name === "assignment_enabled")) {
+    await db.prepare("ALTER TABLE class_courses ADD assignment_enabled INTEGER NOT NULL DEFAULT 0").run();
   }
   const assetColumns = await db.prepare("PRAGMA table_info(file_assets)").all<{ name: string }>();
   if ((assetColumns.results ?? []).length > 0 && !(assetColumns.results ?? []).some((column) => column.name === "storage_provider")) {

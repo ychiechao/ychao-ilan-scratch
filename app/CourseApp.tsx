@@ -6,7 +6,7 @@ import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
 import { authorizedFetch, firebaseAuth, signInWithGoogle, signOutFirebase } from "./firebase-client";
 import { CourseLibrary } from "./library/CourseLibrary";
-import { ILC_SCRATCH_HOME, ILC_SCRATCH_LABEL, isIlcScratchPlatform } from "./submission-links";
+import { ILC_SCRATCH_LABEL, isIlcScratchPlatform } from "./submission-links";
 
 export type AppMode = "library" | "student" | "teacher" | "admin" | "map" | "chapter";
 
@@ -79,11 +79,29 @@ type Badge = {
   earned_at?: string;
 };
 
+type CourseAssignment = {
+  id: string;
+  title: string;
+  status: string;
+  assignment_enabled: number;
+};
+
+type CourseProjectSubmission = {
+  id: string;
+  class_course_id: string;
+  student_id: string;
+  project_url: string;
+  course_title: string;
+  updated_at?: string;
+};
+
 type Dashboard = {
   class: ClassInfo | null;
   students: Student[];
   submissions: Submission[];
   badges: Badge[];
+  courses: CourseAssignment[];
+  courseProjects: CourseProjectSubmission[];
 };
 
 type AdminClass = ClassInfo & {
@@ -164,6 +182,8 @@ const emptyDashboard: Dashboard = {
   students: [],
   submissions: [],
   badges: [],
+  courses: [],
+  courseProjects: [],
 };
 
 function chapterNumber(item: Submission | Badge) {
@@ -637,34 +657,19 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     }
   }
 
-  async function saveSubmissionSettings(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function toggleCourseAssignment(adoptionId: string) {
     if (!teacher || !selectedClassId) return;
     setBusy(true);
-    const form = new FormData(event.currentTarget);
     try {
-      const data = await readJson<{ class: ClassInfo }>(
-        await authorizedFetch("/api/classes", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            classId: selectedClassId,
-            submissionUrl: form.get("submissionUrl"),
-            submissionLabel: form.get("submissionLabel"),
-          }),
-        })
-      );
-      const nextClasses = classes.map((item) => item.id === data.class.id ? data.class : item);
-      setClasses(nextClasses);
-      setDashboard((current) => ({ ...current, class: data.class }));
-      localStorage.setItem("scratch-classes", JSON.stringify(nextClasses));
-      show("success", isIlcScratchPlatform(submissionUrlOf(data.class))
-        ? "已設定學生使用宜蘭 Scratch 作品連結繳交。"
-        : submissionUrlOf(data.class)
-          ? "已儲存這個班級的外部收件設定。"
-          : "已取消這個班級的外部繳交。");
+      await readJson<{ ok: boolean }>(await authorizedFetch("/api/library", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "toggle_assignment", adoptionId }),
+      }));
+      await refreshDashboard(selectedClassId);
+      show("success", "課程作業設定已更新。");
     } catch (error) {
-      show("error", error instanceof Error ? error.message : "無法儲存繳交設定。");
+      show("error", error instanceof Error ? error.message : "無法更新課程作業設定。");
     } finally {
       setBusy(false);
     }
@@ -721,6 +726,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         students: [],
         submissions: [],
         badges: [],
+        courses: [],
+        courseProjects: [],
       });
       localStorage.setItem("scratch-teacher", JSON.stringify(data.teacher));
       localStorage.setItem("scratch-classes", JSON.stringify(data.classes));
@@ -814,6 +821,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         students: [],
         submissions: [],
         badges: [],
+        courses: [],
+        courseProjects: [],
       });
       localStorage.setItem("scratch-classes", JSON.stringify(nextClasses));
       show("success", `新班級代碼是 ${data.class.code}，請等待超管啟用。`);
@@ -1259,42 +1268,11 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
                   {dashboard.class?.status === "active" ? (
                     <>
-                    <form
-                      className="submission-settings"
-                      key={selectedClassId}
-                      onSubmit={saveSubmissionSettings}
-                    >
-                    <div>
-                      <span>作品繳交設定</span>
-                      <strong>學生貼上作品專案連結</strong>
-                    </div>
-                    <label>
-                      平台名稱
-                      <input
-                        name="submissionLabel"
-                        defaultValue={submissionLabelOf(dashboard.class)}
-                        placeholder={ILC_SCRATCH_LABEL}
-                      />
-                    </label>
-                    <label className="submission-url-field">
-                      作品平台網址
-                      <input
-                        name="submissionUrl"
-                        type="url"
-                        defaultValue={submissionUrlOf(dashboard.class)}
-                        placeholder={ILC_SCRATCH_HOME}
-                      />
-                    </label>
-                    <button disabled={busy}>儲存繳交設定</button>
-                    {submissionUrlOf(dashboard.class) && (
-                      <a href={submissionUrlOf(dashboard.class)} target="_blank" rel="noreferrer">
-                        開啟作品平台
-                      </a>
-                    )}
-                    <small className="submission-settings__hint">
-                      使用宜蘭 Scratch 時填入 {ILC_SCRATCH_HOME}；學生完成檢核後，貼上自己的 /projects/作品編號/ 連結。
-                    </small>
-                    </form>
+                    <CourseAssignmentSettings
+                      courses={dashboard.courses}
+                      busy={busy}
+                      onToggle={toggleCourseAssignment}
+                    />
 
                     <TeacherDashboard
                       dashboard={dashboard}
@@ -1666,6 +1644,46 @@ function isAutomaticChapter(chapterNo: number) {
   return chapterNo >= 1 && chapterNo <= 11 && chapterNo !== 3 && chapterNo !== 10;
 }
 
+function CourseAssignmentSettings({
+  courses,
+  busy,
+  onToggle,
+}: {
+  courses: CourseAssignment[];
+  busy: boolean;
+  onToggle: (adoptionId: string) => void;
+}) {
+  return (
+    <section className="course-assignment-settings">
+      <div>
+        <span>課程作業</span>
+        <h3>開放學生繳交作品網址</h3>
+      </div>
+      {courses.length === 0 ? (
+        <p>這個班級尚未採用課程，請先到公開課程庫選擇課程。</p>
+      ) : (
+        <div className="course-assignment-list">
+          {courses.map((course) => (
+            <label key={course.id}>
+              <span>
+                <strong>{course.title}</strong>
+                <small>{course.status === "active" ? "課程已開放" : "課程已關閉"}</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={Boolean(course.assignment_enabled)}
+                disabled={busy || course.status !== "active"}
+                onChange={() => onToggle(course.id)}
+              />
+              <b>{course.assignment_enabled ? "收作業中" : "未收作業"}</b>
+            </label>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function TeacherRoster({
   students,
   busy,
@@ -1735,7 +1753,7 @@ function AdminConsole({
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-TW", { dateStyle: "short", timeStyle: "short" });
   }
   function activityLabel(action: string) {
-    return ({ login: "登入系統", register: "註冊帳號", join_class: "加入班級", question_attempt: "完成課程題目", chapter_attempt: "完成章節檢核", user_profile: "調整使用者資料", course_permission: "調整課程權限", teacher_status: "調整教師狀態", class_status: "調整班級狀態" } as Record<string, string>)[action] ?? action;
+    return ({ login: "登入系統", register: "註冊帳號", join_class: "加入班級", question_attempt: "完成課程題目", chapter_attempt: "完成章節檢核", course_project_submitted: "繳交課程作品", user_profile: "調整使用者資料", course_permission: "調整課程權限", teacher_status: "調整教師狀態", class_status: "調整班級狀態" } as Record<string, string>)[action] ?? action;
   }
   return (
     <div className="admin-console">
@@ -1875,6 +1893,13 @@ function TeacherDashboard({
       submission,
     ])
   );
+  const enabledAssignments = dashboard.courses.filter((course) => Boolean(course.assignment_enabled));
+  const courseProjectsByStudent = new Map<string, CourseProjectSubmission[]>();
+  for (const project of dashboard.courseProjects) {
+    const items = courseProjectsByStudent.get(project.student_id) ?? [];
+    items.push(project);
+    courseProjectsByStudent.set(project.student_id, items);
+  }
 
   return (
     <div className="dashboard">
@@ -1898,6 +1923,7 @@ function TeacherDashboard({
           <thead>
             <tr>
               <th>學生</th>
+              <th>作業</th>
               {chapters.map((chapter) => (
                 <th key={chapter.no}>{chapter.no}</th>
               ))}
@@ -1907,7 +1933,7 @@ function TeacherDashboard({
           <tbody>
             {dashboard.students.length === 0 && (
               <tr>
-                <td colSpan={14}>學生加入班級後，進度會出現在這裡。</td>
+                <td colSpan={15}>學生加入班級後，進度會出現在這裡。</td>
               </tr>
             )}
             {dashboard.students.map((student) => {
@@ -1917,6 +1943,15 @@ function TeacherDashboard({
                   <td>
                     <strong>{seatOf(student)} 號</strong>
                     <span>{student.nickname}</span>
+                  </td>
+                  <td className="course-project-cell">
+                    {(courseProjectsByStudent.get(student.id) ?? []).map((project) => (
+                      <a key={project.id} href={project.project_url} target="_blank" rel="noreferrer">
+                        {project.course_title}
+                      </a>
+                    ))}
+                    {enabledAssignments.length > 0 && !courseProjectsByStudent.has(student.id) && <span>尚未繳交</span>}
+                    {enabledAssignments.length === 0 && <span>-</span>}
                   </td>
                   {chapters.map((chapter) => {
                     const key = `${student.id}:${chapter.no}`;

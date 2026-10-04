@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         id, teacher_id, name, code, submission_url, submission_label, status
       ) VALUES (?, ?, ?, ?, ?, ?, 'pending')`
     )
-    .bind(classId, teacherId, name, code, ILC_SCRATCH_HOME, ILC_SCRATCH_LABEL)
+    .bind(classId, teacherId, name, code, "", ILC_SCRATCH_LABEL)
     .run();
 
   if (courseVersionId) {

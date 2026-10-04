@@ -12,12 +12,15 @@ export async function GET(request: Request) {
   const db = await ensureDb();
   const adoptions = await db.prepare(
     `SELECT cc.id AS adoption_id, s.id AS membership_id, s.class_id, cl.name AS class_name,
+      cc.assignment_enabled,
       cc.course_version_id, cc.sort_order, c.id AS course_id, c.title, c.summary,
       cv.version_no, owner.name AS owner_name,
       (SELECT COUNT(*) FROM lessons WHERE course_version_id = cv.id) AS lesson_count,
       (SELECT COUNT(*) FROM questions q JOIN lessons l ON l.id = q.lesson_id WHERE l.course_version_id = cv.id) AS question_count,
       (SELECT COUNT(*) FROM question_results qr JOIN questions q ON q.id = qr.question_id JOIN lessons l ON l.id = q.lesson_id
-        WHERE qr.student_id = s.id AND l.course_version_id = cv.id AND qr.status = 'passed') AS passed_count
+        WHERE qr.student_id = s.id AND l.course_version_id = cv.id AND qr.status = 'passed') AS passed_count,
+      (SELECT cps.project_url FROM course_project_submissions cps
+        WHERE cps.class_course_id = cc.id AND cps.student_id = s.id) AS project_url
      FROM students s
      JOIN classes cl ON cl.id = s.class_id
      JOIN teachers class_teacher ON class_teacher.id = cl.teacher_id
@@ -43,6 +46,10 @@ export async function GET(request: Request) {
     progress: progressRows.results ?? [],
     membershipId: adoption.membership_id,
     class: { id: adoption.class_id, name: adoption.class_name },
+    assignment: {
+      enabled: Boolean(adoption.assignment_enabled),
+      projectUrl: String(adoption.project_url ?? ""),
+    },
   });
 }
 

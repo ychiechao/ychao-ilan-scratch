@@ -24,7 +24,7 @@ export const classes = sqliteTable("classes", {
   teacherId: text("teacher_id").notNull().references(() => teachers.id),
   name: text("name").notNull(),
   code: text("code").notNull(),
-  submissionUrl: text("submission_url").notNull().default("https://s3.ilc.edu.tw/"),
+  submissionUrl: text("submission_url").notNull().default(""),
   submissionLabel: text("submission_label").notNull().default("宜蘭 Scratch 作品"),
   status: text("status").notNull().default("pending"),
   reviewedAt: text("reviewed_at"),
@@ -149,9 +149,22 @@ export const classCourses = sqliteTable("class_courses", {
   courseVersionId: text("course_version_id").notNull().references(() => courseVersions.id),
   sortOrder: integer("sort_order").notNull().default(0),
   status: text("status").notNull().default("active"),
+  assignmentEnabled: integer("assignment_enabled").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("class_courses_version_idx").on(table.classId, table.courseVersionId),
+]);
+
+export const courseProjectSubmissions = sqliteTable("course_project_submissions", {
+  id: text("id").primaryKey(),
+  classCourseId: text("class_course_id").notNull().references(() => classCourses.id),
+  studentId: text("student_id").notNull().references(() => students.id),
+  projectUrl: text("project_url").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("course_project_submissions_course_student_idx").on(table.classCourseId, table.studentId),
+  index("course_project_submissions_student_idx").on(table.studentId, table.updatedAt),
 ]);
 
 export const questionResults = sqliteTable("question_results", {

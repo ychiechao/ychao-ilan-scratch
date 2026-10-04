@@ -13,6 +13,7 @@ type ClassInfo = { id: string; name: string; code: string };
 type Adoption = {
   id: string; class_id: string; class_name: string; course_id: string;
   adopted_version_no: number; latest_version_no: number; sort_order: number; status: string;
+  assignment_enabled: number;
 };
 type Detail = {
   id: string; title: string; summary: string; ownerName: string; schoolYear: string;
@@ -92,14 +93,20 @@ export function CourseLibrary({ embedded = false }: { embedded?: boolean }) {
     );
   }
 
-  async function adoptionAction(action: "toggle" | "upgrade" | "move", adoptionId: string, direction?: "up" | "down") {
+  async function adoptionAction(action: "toggle" | "toggle_assignment" | "upgrade" | "move", adoptionId: string, direction?: "up" | "down") {
     await mutateAdoption(
       () => authorizedFetch("/api/library", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action, adoptionId, direction }),
       }),
-      action === "upgrade" ? "班級已升級到最新課程版本。" : action === "toggle" ? "班級課程狀態已更新。" : "班級課程順序已更新。",
+      action === "upgrade"
+        ? "班級已升級到最新課程版本。"
+        : action === "toggle"
+          ? "班級課程狀態已更新。"
+          : action === "toggle_assignment"
+            ? "課程作業設定已更新。"
+            : "班級課程順序已更新。",
     );
   }
 
@@ -184,6 +191,15 @@ export function CourseLibrary({ embedded = false }: { embedded?: boolean }) {
                   return (
                     <div className="adoption-row" key={item.id}>
                       <span>{item.name} · v{adoption.adopted_version_no} · {adoption.status === "active" ? "已開放" : "已關閉"}</span>
+                      <label className="assignment-toggle">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(adoption.assignment_enabled)}
+                          disabled={adoption.status !== "active"}
+                          onChange={() => void adoptionAction("toggle_assignment", adoption.id)}
+                        />
+                        <span>開啟作業</span>
+                      </label>
                       <div>
                         {outdated && <button onClick={() => void adoptionAction("upgrade", adoption.id)}>更新至 v{adoption.latest_version_no}</button>}
                         <button className="ghost" onClick={() => void adoptionAction("toggle", adoption.id)}>{adoption.status === "active" ? "關閉" : "開放"}</button>
