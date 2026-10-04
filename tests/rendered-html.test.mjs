@@ -33,14 +33,10 @@ test("server-renders the public course library as the homepage", async () => {
   assert.match(html, /搜尋課程名稱、摘要或標籤/);
   assert.match(html, /公開課程庫/);
   assert.match(html, /Google 登入/);
-  assert.match(html, /我的課程/);
-  assert.match(html, /課程管理/);
   assert.match(html, /加入班級/);
-  assert.match(html, /班級管理/);
-  assert.match(html, /系統管理/);
-  assert.match(html, /課程地圖/);
   assert.match(html, /<button class="active">公開課程庫<\/button>/);
   assert.doesNotMatch(html, /href="\/learn"|href="\/studio"/);
+  assert.doesNotMatch(html, />我的課程<|>課程管理<|>我的班級<|>系統管理<|>課程地圖</);
   assert.match(html, /宜蘭 Scratch 作品連結繳交/);
 });
 
@@ -52,8 +48,10 @@ test("server-renders the legacy course platform by mode", async () => {
   assert.match(html, /課程地圖/);
   assert.match(html, /Scratch 基本環境/);
   assert.match(html, /完整專題：防疫大作戰/);
-  assert.match(html, /aria-label="回到課程地圖"[^>]*>\s*宜蘭 Scratch 基礎課程/);
+  assert.match(html, /aria-label="回到公開課程庫"[^>]*>\s*宜蘭 Scratch 基礎課程/);
   assert.match(html, /class="hero__actions"/);
+  assert.match(html, /第 1 章課程地圖/);
+  assert.match(html, /選擇章節/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
 
@@ -61,7 +59,7 @@ test("server-renders the new course platform entry pages", async () => {
   const cases = [
     ["/studio", "Scratch 課程設計室", "/", "首頁"],
     ["/library", "Scratch 公開課程庫", null, null],
-    ["/learn", "我的班級課程", "/", "首頁"],
+    ["/learn", "我的課程", "/", "首頁"],
     ["/admin/courses", "課程包審核與發布", "/?mode=admin", "超管後台"],
     ["/admin/storage", "Cloudflare 檔案儲存", "/?mode=admin", "超管後台"],
   ];

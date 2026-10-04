@@ -63,14 +63,6 @@ export async function POST(request: Request) {
       return jsonError("這個座號已綁定其他 Google 帳號。", 401);
     }
 
-    const emailOwner = await db
-      .prepare("SELECT id FROM students WHERE email = ? AND id <> ?")
-      .bind(email, student.id)
-      .first();
-    if (emailOwner) {
-      return jsonError("這個 Email 已經綁定其他學生帳號。", 409);
-    }
-
     await db
       .prepare("UPDATE students SET nickname = ?, email = ?, firebase_uid = ?, status = 'active', school_name = CASE WHEN school_name = '' THEN ? ELSE school_name END, last_login_at = CURRENT_TIMESTAMP, last_active_at = CURRENT_TIMESTAMP WHERE id = ?")
       .bind(nickname, email, firebaseUser.localId, String((classRow as { teacher_school?: string }).teacher_school ?? ""), student.id)
@@ -88,6 +80,14 @@ export async function POST(request: Request) {
     });
   }
 
+  const existingMembership = await db
+    .prepare("SELECT seat_no FROM students WHERE class_id = ? AND (email = ? OR firebase_uid = ?)")
+    .bind((classRow as { id: string }).id, email, firebaseUser.localId)
+    .first<{ seat_no: string }>();
+  if (existingMembership) {
+    return jsonError(`你已經用 ${existingMembership.seat_no} 號加入這個班級。`, 409);
+  }
+
   const studentId = createId("stu");
   try {
     await db
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       .run();
   } catch (error) {
     if (error instanceof FirebaseAuthError) return jsonError(error.message, error.status);
-    return jsonError("這個 Email 已經綁定其他學生帳號。", 409);
+    return jsonError("這個座號已被使用，請和老師確認。", 409);
   }
 
   const student = await db

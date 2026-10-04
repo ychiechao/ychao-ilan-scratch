@@ -1,20 +1,22 @@
-import { getStudentProgress, jsonError, publicClass } from "../../_lib";
+import { cleanText, getStudentProgress, jsonError, publicClass } from "../../_lib";
 import { ensureDb } from "../../../../db";
 import { requireStudent } from "../../auth";
 
 export async function GET(request: Request) {
   const actor = await requireStudent(request);
   if (actor instanceof Response) return actor;
-  const studentId = actor.student.id;
+  const requestedStudentId = cleanText(new URL(request.url).searchParams.get("studentId"), 80);
+  const studentId = requestedStudentId || actor.student.id;
 
   const db = await ensureDb();
   const student = await db
     .prepare(
       `SELECT s.id, s.class_id, s.seat_no, s.nickname, s.email, s.created_at
        FROM students s JOIN classes c ON c.id = s.class_id JOIN teachers t ON t.id = c.teacher_id
-       WHERE s.id = ? AND c.status = 'active' AND t.status = 'active'`
+       WHERE s.id = ? AND (s.firebase_uid = ? OR s.email = ?)
+         AND c.status = 'active' AND t.status = 'active'`
     )
-    .bind(studentId)
+    .bind(studentId, actor.firebase.localId, actor.firebase.email.toLowerCase())
     .first();
 
   if (!student) {

@@ -28,8 +28,8 @@ export async function POST(request: Request) {
   const db = await ensureDb();
   if (!(await ownedActiveClass(db, teacherId, classId))) return jsonError("班級尚未啟用，或你沒有這個班級的管理權。", 403);
   const duplicate = await db
-    .prepare("SELECT id FROM students WHERE email = ? OR (class_id = ? AND seat_no = ?)")
-    .bind(email, classId, seatNo)
+    .prepare("SELECT id FROM students WHERE class_id = ? AND (email = ? OR seat_no = ?)")
+    .bind(classId, email, seatNo)
     .first();
   if (duplicate) return jsonError("這個座號或 Email 已經存在。");
   try {

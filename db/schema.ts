@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const teachers = sqliteTable("teachers", {
   id: text("id").primaryKey(),
@@ -48,8 +48,8 @@ export const students = sqliteTable("students", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("students_class_seat_idx").on(table.classId, table.seatNo),
-  uniqueIndex("students_email_idx").on(table.email),
-  uniqueIndex("students_firebase_uid_idx").on(table.firebaseUid),
+  index("students_email_idx").on(table.email),
+  index("students_firebase_uid_idx").on(table.firebaseUid),
 ]);
 
 export const courses = sqliteTable("courses", {

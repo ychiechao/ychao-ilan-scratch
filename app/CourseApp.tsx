@@ -426,12 +426,13 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     }
   }
 
-  async function refreshStudent() {
+  async function refreshStudent(activeStudentId = student?.id) {
+    const studentId = activeStudentId ? `?studentId=${encodeURIComponent(activeStudentId)}` : "";
     const data = await readJson<{
       submissions: Submission[];
       badges: Badge[];
       class?: ClassInfo;
-    }>(await authorizedFetch("/api/student/progress"));
+    }>(await authorizedFetch(`/api/student/progress${studentId}`));
     setSubmissions(data.submissions);
     setBadges(data.badges);
     if (data.class) setStudentClass(data.class);
@@ -478,7 +479,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       setIdentity({ role: "student", name: data.student.nickname, email: data.student.email || google.email, status: "active" });
       localStorage.setItem("scratch-student", JSON.stringify(data.student));
       localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
-      await refreshStudent();
+      await refreshStudent(data.student.id);
       show("success", "已加入班級，可以開始上傳章節作品。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "加入班級失敗。");
@@ -504,7 +505,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       setIdentity({ role: "student", name: data.student.nickname, email: data.student.email || google.email, status: "active" });
       localStorage.setItem("scratch-student", JSON.stringify(data.student));
       localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
-      await refreshStudent();
+      await refreshStudent(data.student.id);
       show("success", "登入成功，已載入你的課程進度。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "學生登入失敗。");
@@ -558,6 +559,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            studentId: student.id,
             chapterNo,
             checklist,
             fileName: scratchFiles.map((file) => file.name).join(" / "),
@@ -984,7 +986,11 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         <div className="hero__content">
           <p className="eyebrow">宜蘭縣國小程式設計自學</p>
           <h1>
-            <button type="button" onClick={() => setMode("map")} aria-label="回到課程地圖">
+            <button
+              type="button"
+              onClick={() => setMode(identity?.role === "teacher" ? "map" : "library")}
+              aria-label={identity?.role === "teacher" ? "回到課程地圖" : "回到公開課程庫"}
+            >
               宜蘭 Scratch 基礎課程
             </button>
           </h1>
@@ -992,27 +998,31 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
             12 堂射擊遊戲課程，學生在裝置上完成自我檢核，再以宜蘭 Scratch 作品連結繳交。
           </p>
           <div className="hero__actions">
-            <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>
-              公開課程庫
-            </button>
-            <button onClick={() => void openMyCourses()}>
-              我的課程
-            </button>
-            <button onClick={() => void openCourseStudio()}>
-              課程管理
-            </button>
-            <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>
-              加入班級
-            </button>
-            <button onClick={() => void openTeacherDashboard()} className={mode === "teacher" ? "active" : ""}>
-              班級管理
-            </button>
-            <button onClick={() => void openAdminDashboard()} className={mode === "admin" ? "active" : ""}>
-              系統管理
-            </button>
-            <button onClick={() => setMode("map")} className={mode === "map" ? "active" : ""}>
-              課程地圖
-            </button>
+            {identity?.role === "student" ? (
+              <>
+                <button onClick={() => void openMyCourses()}>我的課程</button>
+                <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>公開課程庫</button>
+                <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>加入班級</button>
+              </>
+            ) : identity?.role === "teacher" ? (
+              <>
+                <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>公開課程庫</button>
+                <button onClick={() => void openCourseStudio()}>課程管理</button>
+                <button onClick={() => void openTeacherDashboard()} className={mode === "teacher" ? "active" : ""}>我的班級</button>
+                <button onClick={() => setMode("map")} className={mode === "map" ? "active" : ""}>課程地圖</button>
+              </>
+            ) : identity?.role === "superadmin" ? (
+              <>
+                <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>公開課程庫</button>
+                <button onClick={() => void openCourseStudio()}>課程管理</button>
+                <button onClick={() => void openAdminDashboard()} className={mode === "admin" ? "active" : ""}>系統管理</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>公開課程庫</button>
+                <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>加入班級</button>
+              </>
+            )}
           </div>
         </div>
         <div className="hero__board" aria-label="課程進度總覽">
@@ -1050,7 +1060,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                   className={`chapter-link ${selectedChapter === chapter.no ? "selected" : ""} ${earned ? "earned" : ""}`}
                   onClick={() => {
                     setSelectedChapter(chapter.no);
-                    setMode(student ? "student" : "chapter");
+                    if (mode !== "map") setMode(student ? "student" : "chapter");
                   }}
                 >
                   <span>{String(chapter.no).padStart(2, "0")}</span>
@@ -1344,25 +1354,31 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
               <div className="section-title">
                 <div>
                   <p className="eyebrow">Course Map</p>
-                  <h2>12 堂電子書章節</h2>
+                  <h2>{`第 ${selected.no} 章課程地圖`}</h2>
                 </div>
-                <a className="text-link" href={playlistUrl} target="_blank" rel="noreferrer">
-                  開啟播放清單
-                </a>
+                <label className="chapter-map-selector">
+                  選擇章節
+                  <select value={selectedChapter} onChange={(event) => setSelectedChapter(Number(event.target.value))}>
+                    {chapters.map((chapter) => <option key={chapter.no} value={chapter.no}>{chapter.no}. {chapter.title}</option>)}
+                  </select>
+                </label>
               </div>
-              <div className="course-grid">
-                {chapters.map((chapter) => (
-                  <article key={chapter.no} className={`course-card course-card--${chapter.color}`}>
-                    <span>{chapter.range}</span>
-                    <h3>{chapter.title}</h3>
-                    <p>{chapter.objective}</p>
-                    <div className="course-card__actions">
-                      <b>{chapter.badge}</b>
-                      <a href={`/chapters/${chapter.no}`}>進入章節頁</a>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <article className={`chapter-map chapter-map--${selected.color}`}>
+                <header>
+                  <div><span>{selected.range}</span><h3>{selected.title}</h3><p>{selected.objective}</p></div>
+                  <b>{selected.badge}</b>
+                </header>
+                <div className="chapter-map__path">
+                  <section><span>01</span><strong>學習目標</strong><p>{selected.lessonPoints[0]}</p></section>
+                  <section><span>02</span><strong>內容說明</strong><p>{selected.overview}</p></section>
+                  <section><span>03</span><strong>章節影片</strong><p>{selected.videoTitles.join("、")}</p></section>
+                  <section><span>04</span><strong>自我檢核</strong><p>{selected.checks.length} 項檢核，完成後取得徽章。</p></section>
+                </div>
+                <footer>
+                  <a href={`/chapters/${selected.no}`}>開啟第 {selected.no} 章教材</a>
+                  <a className="text-link" href={playlistUrl} target="_blank" rel="noreferrer">播放清單</a>
+                </footer>
+              </article>
             </div>
           )}
 

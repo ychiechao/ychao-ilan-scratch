@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const actor = await requireStudent(request);
   if (actor instanceof Response) return actor;
-  const studentId = actor.student.id;
+  const studentId = cleanText(payload?.studentId, 80) || actor.student.id;
   const chapterNo = Number(payload?.chapterNo);
   const fileName = cleanText(payload?.fileName, 180);
   const fileSize = Number(payload?.fileSize);
@@ -52,9 +52,10 @@ export async function POST(request: Request) {
        FROM students st
        JOIN classes c ON c.id = st.class_id
        JOIN teachers t ON t.id = c.teacher_id
-       WHERE st.id = ? AND c.status = 'active' AND t.status = 'active'`
+       WHERE st.id = ? AND (st.firebase_uid = ? OR st.email = ?)
+         AND c.status = 'active' AND t.status = 'active'`
     )
-    .bind(studentId)
+    .bind(studentId, actor.firebase.localId, actor.firebase.email.toLowerCase())
     .first<{ id: string; submission_url: string }>();
 
   if (!student) return jsonError("找不到學生。", 404);
@@ -147,15 +148,16 @@ export async function PATCH(request: Request) {
       return jsonError("請貼上完整的宜蘭 Scratch 作品網址，例如 https://s3.ilc.edu.tw/projects/356121701/。");
     }
     const submission = await db.prepare(
-      `SELECT s.chapter_no
+      `SELECT s.chapter_no, s.student_id
        FROM submissions s
        JOIN students st ON st.id = s.student_id
        JOIN classes c ON c.id = st.class_id
        JOIN teachers t ON t.id = c.teacher_id
-       WHERE s.id = ? AND s.student_id = ? AND s.status IN ('ready_to_upload', 'resubmit')
+       WHERE s.id = ? AND (st.firebase_uid = ? OR st.email = ?)
+         AND s.status IN ('ready_to_upload', 'resubmit')
          AND c.status = 'active' AND t.status = 'active'
          AND c.submission_url LIKE 'https://s3.ilc.edu.tw/%'`
-    ).bind(submissionId, actor.student.id).first<{ chapter_no: number }>();
+    ).bind(submissionId, actor.firebase.localId, actor.firebase.email.toLowerCase()).first<{ chapter_no: number; student_id: string }>();
     if (!submission) return jsonError("找不到可繳交的章節，請先完成自我檢核。", 404);
     const expectedProjectCount = getChapter(submission.chapter_no)?.submissionTasks?.length ?? 1;
     if (projectUrls.length !== expectedProjectCount) {
@@ -166,42 +168,44 @@ export async function PATCH(request: Request) {
       .prepare(
         `UPDATE submissions SET status = 'uploaded', external_status = 'reported', project_url = ?,
           feedback = '學生已繳交宜蘭 Scratch 作品連結，等待老師確認。', updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND student_id = ? AND status IN ('ready_to_upload', 'resubmit')
+         WHERE id = ? AND status IN ('ready_to_upload', 'resubmit')
            AND EXISTS (
              SELECT 1 FROM students st
              JOIN classes c ON c.id = st.class_id
              JOIN teachers t ON t.id = c.teacher_id
              WHERE st.id = submissions.student_id AND c.status = 'active' AND t.status = 'active'
                AND c.submission_url LIKE 'https://s3.ilc.edu.tw/%'
+               AND (st.firebase_uid = ? OR st.email = ?)
            )`
       )
-      .bind(storedProjectUrls, submissionId, actor.student.id)
+      .bind(storedProjectUrls, submissionId, actor.firebase.localId, actor.firebase.email.toLowerCase())
       .run();
     if (!result.meta.changes) return jsonError("找不到可繳交的章節，請先完成自我檢核。", 404);
     await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'student', ?, 'project_submitted', ?)")
-      .bind(createId("activity"), actor.student.id, JSON.stringify({ submissionId, projectUrls })).run();
-    return Response.json(await getStudentProgress(actor.student.id));
+      .bind(createId("activity"), submission.student_id, JSON.stringify({ submissionId, projectUrls })).run();
+    return Response.json(await getStudentProgress(submission.student_id));
   }
 
   if (action === "mark_uploaded") {
     const actor = await requireStudent(request);
     if (actor instanceof Response) return actor;
-    const studentId = actor.student.id;
     const result = await db
       .prepare(
         `UPDATE submissions SET status = 'uploaded', external_status = 'reported', project_url = '',
           feedback = '學生已回報完成雲端繳交，等待老師確認。', updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND student_id = ? AND status IN ('ready_to_upload', 'resubmit')
+         WHERE id = ? AND status IN ('ready_to_upload', 'resubmit')
            AND EXISTS (
              SELECT 1 FROM students st JOIN classes c ON c.id = st.class_id JOIN teachers t ON t.id = c.teacher_id
              WHERE st.id = submissions.student_id AND c.status = 'active' AND t.status = 'active'
                AND c.submission_url NOT LIKE 'https://s3.ilc.edu.tw/%'
+               AND (st.firebase_uid = ? OR st.email = ?)
            )`
       )
-      .bind(submissionId, studentId)
+      .bind(submissionId, actor.firebase.localId, actor.firebase.email.toLowerCase())
       .run();
     if (!result.meta.changes) return jsonError("找不到可回報的繳交紀錄。", 404);
-    return Response.json(await getStudentProgress(studentId));
+    const owner = await db.prepare("SELECT student_id FROM submissions WHERE id = ?").bind(submissionId).first<{ student_id: string }>();
+    return Response.json(await getStudentProgress(owner?.student_id ?? actor.student.id));
   }
 
   if (action !== "confirm" && action !== "resubmit") {

@@ -1522,6 +1522,103 @@ td:first-child span {
   text-decoration: none;
 }
 
+.chapter-map-selector {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.8rem;
+  font-weight: 900;
+  gap: 5px;
+  min-width: min(320px, 100%);
+}
+
+.chapter-map-selector select {
+  background: white;
+  min-height: 42px;
+}
+
+.chapter-map {
+  border-top: 5px solid var(--green);
+  display: grid;
+  gap: 24px;
+  padding: 24px 4px 4px;
+}
+
+.chapter-map--blue { border-color: #4d88bb; }
+.chapter-map--yellow { border-color: #d8ae28; }
+.chapter-map--coral { border-color: #d97954; }
+
+.chapter-map > header {
+  align-items: start;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.chapter-map > header span,
+.chapter-map__path span {
+  color: var(--green-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.chapter-map > header h3 {
+  font-size: 1.8rem;
+  margin: 4px 0 8px;
+}
+
+.chapter-map > header p,
+.chapter-map__path p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.chapter-map > header b {
+  background: var(--ink);
+  border-radius: 8px;
+  color: white;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
+.chapter-map__path {
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.chapter-map__path section {
+  border-top: 3px solid #bad4c6;
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 18px 18px 14px 0;
+}
+
+.chapter-map__path section + section {
+  padding-left: 18px;
+}
+
+.chapter-map__path strong {
+  font-size: 1.05rem;
+}
+
+.chapter-map > footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chapter-map > footer > a:first-child {
+  background: var(--ink);
+  border-radius: 8px;
+  color: white;
+  font-weight: 900;
+  padding: 11px 14px;
+  text-decoration: none;
+}
+
 .chapter-tools {
   display: flex;
   justify-content: flex-start;
@@ -1869,6 +1966,10 @@ td:first-child span {
     grid-template-columns: 1fr;
   }
 
+  .chapter-map__path {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .student-login-form,
   .student-join-form {
     grid-template-columns: 1fr;
@@ -1886,6 +1987,20 @@ td:first-child span {
     min-height: 680px;
     padding-bottom: 26px;
     padding-top: 20px;
+  }
+
+  .chapter-map > header,
+  .chapter-map > footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chapter-map__path {
+    grid-template-columns: 1fr;
+  }
+
+  .chapter-map__path section + section {
+    padding-left: 0;
   }
 
   .hero__account {
@@ -2115,7 +2230,10 @@ td:first-child span {
 .learning-layout { align-items: start; display: grid; gap: 18px; grid-template-columns: 260px minmax(0, 1fr); margin: auto; max-width: 1200px; }
 .learning-layout > aside { display: grid; gap: 8px; }
 .learning-layout > aside button { display: grid; gap: 4px; text-align: left; }
+.learning-layout > aside button.active { background: var(--green); color: white; }
+.learning-layout > aside small { font-size: .75rem; opacity: .72; }
 .learning-layout > aside span { font-size: .78rem; opacity: .75; }
+.learning-header-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
 .learning-layout > section,
 .learning-lesson { display: grid; gap: 14px; }
 .learning-question { align-items: center; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) auto; padding: 14px; }

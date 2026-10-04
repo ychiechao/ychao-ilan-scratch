@@ -304,9 +304,9 @@ export async function ensureDb() {
     await db.prepare("UPDATE file_assets SET storage_provider = 'r2', provider_file_id = r2_key WHERE provider_file_id IS NULL").run();
   }
   await db.batch(createStatements.map((statement) => db.prepare(statement)));
-  await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS students_email_idx ON students (email)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS students_email_idx ON students (email)").run();
   await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS teachers_firebase_uid_idx ON teachers (firebase_uid) WHERE firebase_uid IS NOT NULL").run();
-  await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS students_firebase_uid_idx ON students (firebase_uid) WHERE firebase_uid IS NOT NULL").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS students_firebase_uid_idx ON students (firebase_uid) WHERE firebase_uid IS NOT NULL").run();
   const chapterSwap = await db
     .prepare("SELECT id FROM app_migrations WHERE id = 'swap-chapters-10-11'")
     .first();
