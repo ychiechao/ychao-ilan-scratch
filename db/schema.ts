@@ -26,6 +26,7 @@ export const classes = sqliteTable("classes", {
   code: text("code").notNull(),
   submissionUrl: text("submission_url").notNull().default(""),
   submissionLabel: text("submission_label").notNull().default("宜蘭 Scratch 作品"),
+  enrollmentEnabled: integer("enrollment_enabled").notNull().default(1),
   status: text("status").notNull().default("pending"),
   reviewedAt: text("reviewed_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

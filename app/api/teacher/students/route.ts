@@ -60,10 +60,19 @@ export async function PATCH(request: Request) {
   const db = await ensureDb();
   if (!(await ownedActiveClass(db, teacherId, classId))) return jsonError("無這個班級的管理權。", 403);
   const current = await db
-    .prepare("SELECT email FROM students WHERE id = ? AND class_id = ?")
+    .prepare("SELECT email, status FROM students WHERE id = ? AND class_id = ?")
     .bind(studentId, classId)
-    .first<{ email: string }>();
+    .first<{ email: string; status: string }>();
   if (!current) return jsonError("找不到學生。", 404);
+
+  if (payload?.action === "toggle_status") {
+    const result = await db
+      .prepare("UPDATE students SET status = CASE status WHEN 'active' THEN 'disabled' ELSE 'active' END WHERE id = ? AND class_id = ?")
+      .bind(studentId, classId)
+      .run();
+    if (!result.meta.changes) return jsonError("找不到學生。", 404);
+    return Response.json({ ok: true });
+  }
 
   if (!seatNo || !nickname || !isValidEmail(email)) return jsonError("請輸入座號、暱稱與正確的 Email。");
   if (email !== current.email) return jsonError("Firebase 登入 Email 不能由老師變更，請讓學生重新建立帳號。");

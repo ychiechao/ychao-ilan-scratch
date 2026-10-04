@@ -65,6 +65,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
+    action?: string;
     teacherId?: string;
     classId?: string;
     submissionUrl?: string;
@@ -82,6 +83,24 @@ export async function PATCH(request: Request) {
     return jsonError("缺少老師或班級資料。");
   }
 
+  const db = await ensureDb();
+  if (payload?.action === "toggle_enrollment") {
+    const result = await db
+      .prepare(
+        `UPDATE classes
+         SET enrollment_enabled = CASE enrollment_enabled WHEN 1 THEN 0 ELSE 1 END
+         WHERE id = ? AND teacher_id = ? AND status = 'active'
+           AND EXISTS (SELECT 1 FROM teachers WHERE id = ? AND status = 'active')`
+      )
+      .bind(classId, teacherId, teacherId)
+      .run();
+    if (!result.meta.changes) {
+      return jsonError("班級尚未通過審核，或這不是你的班級。", 403);
+    }
+    const classRow = await db.prepare("SELECT * FROM classes WHERE id = ?").bind(classId).first();
+    return Response.json({ class: publicClass(classRow as never) });
+  }
+
   if (submissionUrl) {
     try {
       const parsed = new URL(submissionUrl);
@@ -95,7 +114,6 @@ export async function PATCH(request: Request) {
     submissionLabel = submissionLabel || ILC_SCRATCH_LABEL;
   }
 
-  const db = await ensureDb();
   const result = await db
     .prepare(
       `UPDATE classes

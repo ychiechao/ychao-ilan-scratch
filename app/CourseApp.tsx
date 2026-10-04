@@ -37,6 +37,8 @@ type ClassInfo = {
   submission_url?: string;
   submissionLabel?: string;
   submission_label?: string;
+  enrollmentEnabled?: boolean;
+  enrollment_enabled?: number;
   status?: string;
   createdAt?: string;
 };
@@ -48,6 +50,7 @@ type Student = {
   seat_no?: string;
   nickname: string;
   email?: string;
+  status?: string;
 };
 type Submission = {
   id: string;
@@ -215,6 +218,10 @@ function submissionLabelOf(item?: ClassInfo | null) {
   return item?.submissionLabel ?? item?.submission_label ?? ILC_SCRATCH_LABEL;
 }
 
+function enrollmentEnabledOf(item?: ClassInfo | null) {
+  return item?.enrollmentEnabled ?? Boolean(item?.enrollment_enabled ?? 1);
+}
+
 function projectUrlOf(item?: Submission | null) {
   return item?.projectUrl ?? item?.project_url ?? "";
 }
@@ -298,6 +305,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
   );
   const [teacherCourses, setTeacherCourses] = useState<TeacherCourseOption[]>([]);
   const [dashboard, setDashboard] = useState<Dashboard>(emptyDashboard);
+  const [teacherTab, setTeacherTab] = useState<"classes" | "students">("classes");
   const [student, setStudent] = useState<Student | null>(() => readStored("scratch-student"));
   const [studentClass, setStudentClass] = useState<ClassInfo | null>(() => readStored("scratch-student-class"));
   const [studentAccessMode, setStudentAccessMode] = useState<"login" | "join">("login");
@@ -834,6 +842,31 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     }
   }
 
+  async function toggleClassEnrollment(item: ClassInfo) {
+    if (!teacher) return;
+    setBusy(true);
+    try {
+      const data = await readJson<{ class: ClassInfo }>(
+        await authorizedFetch("/api/classes", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "toggle_enrollment", classId: item.id }),
+        })
+      );
+      setClasses((current) => {
+        const next = current.map((candidate) => candidate.id === data.class.id ? data.class : candidate);
+        localStorage.setItem("scratch-classes", JSON.stringify(next));
+        return next;
+      });
+      setDashboard((current) => current.class?.id === data.class.id ? { ...current, class: data.class } : current);
+      show("success", enrollmentEnabledOf(data.class) ? "已開放學生加入班級。" : "已停止新學生加入，現有學生資料會保留。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法更新班級加入狀態。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function loginAdmin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -923,6 +956,26 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       show("success", "已剔除學生。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "無法剔除學生。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleStudentStatus(student: Student) {
+    if (!teacher || !selectedClassId) return;
+    setBusy(true);
+    try {
+      await readJson<{ ok: boolean }>(
+        await authorizedFetch("/api/teacher/students", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "toggle_status", classId: selectedClassId, studentId: student.id }),
+        })
+      );
+      await refreshDashboard(selectedClassId);
+      show("success", student.status === "disabled" ? "已啟用學生帳號。" : "已停用學生帳號，學生將無法登入。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法更新學生狀態。");
     } finally {
       setBusy(false);
     }
@@ -1231,69 +1284,109 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                     </div>
                   ) : (
                     <>
-                  <div className="teacher-tools">
-                    <div>
-                      <span>目前老師</span>
-                      <strong>{teacher.name}</strong>
-                    </div>
-                    <label>
-                      班級
-                      <select
-                        value={selectedClassId}
-                        onChange={(event) => {
-                          setSelectedClassId(event.target.value);
-                          void refreshDashboard(event.target.value);
-                        }}
-                      >
-                        {classes.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name} - {item.code} - {accountStatusLabel(item.status)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <form onSubmit={createClass}>
-                      <input name="name" placeholder="新增班級名稱" />
-                      <select name="courseVersionId" defaultValue="" aria-label="新班級課程">
-                        <option value="">建立後再選課程</option>
-                        {teacherCourses.map((course) => <option key={course.id} value={course.current_version_id}>{course.title}</option>)}
-                      </select>
-                      <button disabled={busy}>新增班級</button>
-                    </form>
-                    <button className="ghost" onClick={() => selectedClassId && refreshDashboard(selectedClassId)}>
-                      更新後台
-                    </button>
-                    <a className="text-link" href="/library">選擇班級課程</a>
-                  </div>
+                      <div className="teacher-tabs" role="tablist" aria-label="我的班級管理">
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={teacherTab === "classes"}
+                          className={teacherTab === "classes" ? "active" : "ghost"}
+                          onClick={() => setTeacherTab("classes")}
+                        >
+                          班級管理
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={teacherTab === "students"}
+                          className={teacherTab === "students" ? "active" : "ghost"}
+                          onClick={() => setTeacherTab("students")}
+                        >
+                          學生管理
+                        </button>
+                      </div>
 
-                  {dashboard.class?.status === "active" ? (
-                    <>
-                    <CourseAssignmentSettings
-                      courses={dashboard.courses}
-                      busy={busy}
-                      onToggle={toggleCourseAssignment}
-                    />
+                      {teacherTab === "classes" ? (
+                        <>
+                          <div className="teacher-tools">
+                            <div>
+                              <span>目前老師</span>
+                              <strong>{teacher.name}</strong>
+                            </div>
+                            <form onSubmit={createClass}>
+                              <input name="name" placeholder="新增班級名稱" required />
+                              <select name="courseVersionId" defaultValue="" aria-label="新班級課程">
+                                <option value="">建立後再選課程</option>
+                                {teacherCourses.map((course) => <option key={course.id} value={course.current_version_id}>{course.title}</option>)}
+                              </select>
+                              <button disabled={busy}>新增班級</button>
+                            </form>
+                            <a className="text-link" href="/library">選擇班級課程</a>
+                          </div>
 
-                    <TeacherDashboard
-                      dashboard={dashboard}
-                      busy={busy}
-                      onReview={reviewSubmission}
-                    />
+                          <ClassEnrollmentManager
+                            classes={classes}
+                            selectedClassId={selectedClassId}
+                            busy={busy}
+                            onSelect={(classId) => {
+                              setSelectedClassId(classId);
+                              void refreshDashboard(classId);
+                            }}
+                            onToggle={toggleClassEnrollment}
+                          />
 
-                    <TeacherRoster
-                      students={dashboard.students}
-                      busy={busy}
-                      onSave={saveStudent}
-                      onRemove={removeStudent}
-                    />
-                    </>
-                  ) : (
-                    <div className="approval-panel approval-panel--class">
-                      <span>{accountStatusLabel(dashboard.class?.status)}</span>
-                      <h3>這個班級尚未啟用</h3>
-                      <p>班級代碼已產生，超管啟用後，學生才能加入，老師也才能編輯名冊。</p>
-                    </div>
-                  )}
+                          {dashboard.class?.status === "active" ? (
+                            <>
+                              <CourseAssignmentSettings
+                                courses={dashboard.courses}
+                                busy={busy}
+                                onToggle={toggleCourseAssignment}
+                              />
+                              <TeacherDashboard
+                                dashboard={dashboard}
+                                busy={busy}
+                                onReview={reviewSubmission}
+                              />
+                            </>
+                          ) : (
+                            <ClassApprovalPanel classInfo={dashboard.class} />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="student-manager-toolbar">
+                            <label>
+                              管理班級
+                              <select
+                                value={selectedClassId}
+                                onChange={(event) => {
+                                  setSelectedClassId(event.target.value);
+                                  void refreshDashboard(event.target.value);
+                                }}
+                              >
+                                {classes.map((item) => (
+                                  <option key={item.id} value={item.id}>
+                                    {item.name} - {item.code}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <button className="ghost" disabled={busy || !selectedClassId} onClick={() => selectedClassId && refreshDashboard(selectedClassId)}>
+                              更新名冊
+                            </button>
+                          </div>
+                          {dashboard.class?.status === "active" ? (
+                            <TeacherRoster
+                              students={dashboard.students}
+                              busy={busy}
+                              onSave={saveStudent}
+                              onToggleStatus={toggleStudentStatus}
+                              onRemove={removeStudent}
+                            />
+                          ) : (
+                            <ClassApprovalPanel classInfo={dashboard.class} />
+                          )}
+                        </>
+                      )}
 
                     </>
                   )}
@@ -1644,6 +1737,74 @@ function isAutomaticChapter(chapterNo: number) {
   return chapterNo >= 1 && chapterNo <= 11 && chapterNo !== 3 && chapterNo !== 10;
 }
 
+function ClassApprovalPanel({ classInfo }: { classInfo?: ClassInfo | null }) {
+  return (
+    <div className="approval-panel approval-panel--class">
+      <span>{classInfo ? accountStatusLabel(classInfo.status) : "尚未選擇"}</span>
+      <h3>{classInfo ? "這個班級尚未啟用" : "尚未建立班級"}</h3>
+      <p>
+        {classInfo
+          ? "班級代碼已產生，超管啟用後，老師才能開放學生加入並管理名冊。"
+          : "請先在班級管理新增班級。"}
+      </p>
+    </div>
+  );
+}
+
+function ClassEnrollmentManager({
+  classes,
+  selectedClassId,
+  busy,
+  onSelect,
+  onToggle,
+}: {
+  classes: ClassInfo[];
+  selectedClassId: string;
+  busy: boolean;
+  onSelect: (classId: string) => void;
+  onToggle: (item: ClassInfo) => void;
+}) {
+  return (
+    <section className="class-manager">
+      <div className="class-manager__head">
+        <div>
+          <span>班級管理</span>
+          <h3>選擇班級與開放加入</h3>
+        </div>
+        <b>{classes.length} 個班級</b>
+      </div>
+      <div className="class-manager__list">
+        {classes.length === 0 && <p>尚未建立班級。</p>}
+        {classes.map((item) => {
+          const canManage = item.status === "active";
+          const accepting = enrollmentEnabledOf(item);
+          return (
+            <article key={item.id} className={item.id === selectedClassId ? "selected" : ""}>
+              <button type="button" className="class-manager__select" onClick={() => onSelect(item.id)}>
+                <span>{accountStatusLabel(item.status)}</span>
+                <strong>{item.name}</strong>
+                <code>{item.code}</code>
+              </button>
+              <label className="enrollment-toggle">
+                <input
+                  type="checkbox"
+                  checked={canManage && accepting}
+                  disabled={busy || !canManage}
+                  onChange={() => onToggle(item)}
+                />
+                <span>
+                  <b>{canManage ? (accepting ? "開放加入" : "停止加入") : accountStatusLabel(item.status)}</b>
+                  <small>{canManage ? (accepting ? "新學生可以使用班級代碼加入" : "現有學生與進度仍會保留") : "需由超管啟用班級"}</small>
+                </span>
+              </label>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function CourseAssignmentSettings({
   courses,
   busy,
@@ -1688,13 +1849,16 @@ function TeacherRoster({
   students,
   busy,
   onSave,
+  onToggleStatus,
   onRemove,
 }: {
   students: Student[];
   busy: boolean;
   onSave: (event: FormEvent<HTMLFormElement>, studentId?: string) => void;
+  onToggleStatus: (student: Student) => void;
   onRemove: (student: Student) => void;
 }) {
+  const activeCount = students.filter((student) => student.status !== "disabled").length;
   return (
     <section className="roster-manager">
       <div className="roster-manager__head">
@@ -1702,7 +1866,7 @@ function TeacherRoster({
           <span>學生帳號</span>
           <h3>班級名冊管理</h3>
         </div>
-        <b>{students.length} 人</b>
+        <b>{activeCount} 人啟用／共 {students.length} 人</b>
       </div>
       <form className="roster-add" onSubmit={(event) => onSave(event)}>
         <input name="seatNo" placeholder="座號" required />
@@ -1713,10 +1877,19 @@ function TeacherRoster({
       <div className="roster-list">
         {students.length === 0 && <p>尚無學生，可由老師新增，或讓學生以班級代碼自行加入。</p>}
         {students.map((item) => (
-          <form key={item.id} className="roster-row" onSubmit={(event) => onSave(event, item.id)}>
+          <form key={item.id} className={`roster-row ${item.status === "disabled" ? "roster-row--disabled" : ""}`} onSubmit={(event) => onSave(event, item.id)}>
             <input name="seatNo" defaultValue={seatOf(item)} aria-label={`${item.nickname}座號`} required />
             <input name="nickname" defaultValue={item.nickname} aria-label="暱稱" required />
             <input name="email" type="email" defaultValue={item.email ?? ""} placeholder="學生 Email" aria-label="學生 Email" readOnly required />
+            <label className="student-status-toggle">
+              <input
+                type="checkbox"
+                checked={item.status !== "disabled"}
+                disabled={busy}
+                onChange={() => onToggleStatus(item)}
+              />
+              <span>{item.status === "disabled" ? "已停用" : "已啟用"}</span>
+            </label>
             <button disabled={busy}>儲存</button>
             <button type="button" className="danger" disabled={busy} onClick={() => onRemove(item)}>剔除</button>
           </form>
@@ -1942,7 +2115,7 @@ function TeacherDashboard({
                 <tr key={student.id}>
                   <td>
                     <strong>{seatOf(student)} 號</strong>
-                    <span>{student.nickname}</span>
+                    <span>{student.nickname}{student.status === "disabled" ? "（已停用）" : ""}</span>
                   </td>
                   <td className="course-project-cell">
                     {(courseProjectsByStudent.get(student.id) ?? []).map((project) => (

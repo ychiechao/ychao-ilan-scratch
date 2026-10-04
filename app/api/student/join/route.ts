@@ -41,13 +41,13 @@ export async function POST(request: Request) {
     .prepare(
       `SELECT c.*, t.school_name AS teacher_school FROM classes c
        JOIN teachers t ON t.id = c.teacher_id
-       WHERE c.code = ? AND c.status = 'active' AND t.status = 'active'`
+       WHERE c.code = ? AND c.status = 'active' AND c.enrollment_enabled = 1 AND t.status = 'active'`
     )
     .bind(classCode)
     .first();
 
   if (!classRow) {
-    return jsonError("找不到已啟用的班級，請請老師確認班級已通過審核。", 404);
+    return jsonError("找不到可加入的班級，請確認班級已通過審核且老師已開放加入。", 404);
   }
 
   const existing = await db
@@ -58,13 +58,16 @@ export async function POST(request: Request) {
   const pinHash = await hashPin(`${(classRow as { id: string }).id}:${seatNo}`, `firebase:${firebaseUser.localId}`);
 
   if (existing) {
-    const student = existing as { id: string; email?: string | null };
+    const student = existing as { id: string; email?: string | null; status?: string };
+    if (student.status === "disabled") {
+      return jsonError("學生帳號已停用，請聯絡老師。", 403);
+    }
     if (student.email && normalizeEmail(student.email) !== email) {
       return jsonError("這個座號已綁定其他 Google 帳號。", 401);
     }
 
     await db
-      .prepare("UPDATE students SET nickname = ?, email = ?, firebase_uid = ?, status = 'active', school_name = CASE WHEN school_name = '' THEN ? ELSE school_name END, last_login_at = CURRENT_TIMESTAMP, last_active_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .prepare("UPDATE students SET nickname = ?, email = ?, firebase_uid = ?, school_name = CASE WHEN school_name = '' THEN ? ELSE school_name END, last_login_at = CURRENT_TIMESTAMP, last_active_at = CURRENT_TIMESTAMP WHERE id = ?")
       .bind(nickname, email, firebaseUser.localId, String((classRow as { teacher_school?: string }).teacher_school ?? ""), student.id)
       .run();
     await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action) VALUES (?, 'student', ?, 'join_class')")

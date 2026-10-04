@@ -1000,8 +1000,22 @@ select:focus {
 
 .roster-row {
   border-bottom: 1px solid var(--line);
-  grid-template-columns: 80px minmax(110px, 0.8fr) minmax(180px, 1.4fr) minmax(110px, 0.8fr) auto auto;
+  grid-template-columns: 80px minmax(110px, 0.8fr) minmax(180px, 1.4fr) minmax(108px, auto) auto auto;
   padding: 8px 0;
+}
+
+.roster-row--disabled {
+  background: #f3f3f1;
+  color: var(--muted);
+}
+
+.student-status-toggle {
+  align-items: center;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 900;
+  gap: 7px;
+  white-space: nowrap;
 }
 
 button.danger {
@@ -1178,12 +1192,143 @@ button.danger {
   margin: 0;
 }
 
+.teacher-tabs {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.teacher-tabs button {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  min-width: 150px;
+}
+
+.teacher-tabs button.active {
+  background: var(--ink);
+  color: white;
+}
+
 .teacher-tools {
   align-items: end;
   display: grid;
   gap: 14px;
   grid-template-columns: 0.8fr 1fr 1.2fr;
   margin-bottom: 18px;
+}
+
+.class-manager {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.class-manager__head,
+.student-manager-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.class-manager__head {
+  margin-bottom: 12px;
+}
+
+.class-manager__head > div,
+.class-manager__list,
+.enrollment-toggle > span {
+  display: grid;
+  gap: 4px;
+}
+
+.class-manager__head span,
+.class-manager__select span,
+.enrollment-toggle small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.class-manager__head h3,
+.class-manager__list p {
+  margin: 0;
+}
+
+.class-manager__list {
+  gap: 8px;
+}
+
+.class-manager__list article {
+  align-items: center;
+  background: #f8faf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.7fr);
+  padding: 10px 12px;
+}
+
+.class-manager__list article.selected {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(47, 143, 107, 0.12);
+}
+
+.class-manager__select {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  display: grid;
+  gap: 3px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 2px;
+  text-align: left;
+}
+
+.class-manager__select span,
+.class-manager__select strong {
+  grid-column: 1;
+}
+
+.class-manager__select code {
+  align-self: center;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-weight: 900;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  padding: 7px 9px;
+}
+
+.enrollment-toggle {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.enrollment-toggle input,
+.student-status-toggle input {
+  accent-color: var(--green-dark);
+  height: 22px;
+  min-height: 0;
+  width: 22px;
+}
+
+.student-manager-toolbar {
+  background: #f8faf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.student-manager-toolbar label {
+  display: grid;
+  gap: 5px;
+  min-width: min(100%, 420px);
 }
 
 .course-assignment-settings {
@@ -1974,6 +2119,8 @@ td:first-child span {
   .form-grid,
   .teacher-auth,
   .teacher-tools,
+  .class-manager__list article,
+  .student-manager-toolbar,
   .external-submit,
   .chapter-preview__grid,
   .chapter-preview__video,

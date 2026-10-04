@@ -42,6 +42,7 @@ const createStatements = [
     code TEXT NOT NULL UNIQUE,
     submission_url TEXT NOT NULL DEFAULT '',
     submission_label TEXT NOT NULL DEFAULT '宜蘭 Scratch 作品',
+    enrollment_enabled INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'pending',
     reviewed_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -284,6 +285,10 @@ export async function ensureDb() {
   }
   if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "last_active_at")) {
     await db.prepare("ALTER TABLE teachers ADD last_active_at TEXT").run();
+  }
+  const classColumns = await db.prepare("PRAGMA table_info(classes)").all<{ name: string }>();
+  if ((classColumns.results ?? []).length > 0 && !(classColumns.results ?? []).some((column) => column.name === "enrollment_enabled")) {
+    await db.prepare("ALTER TABLE classes ADD enrollment_enabled INTEGER NOT NULL DEFAULT 1").run();
   }
   const studentColumns = await db.prepare("PRAGMA table_info(students)").all<{ name: string }>();
   if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "email")) {
