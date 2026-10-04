@@ -1,5 +1,6 @@
 import { chapters } from "../course-data";
 import { ensureDb } from "../../db";
+import { ILC_SCRATCH_LABEL } from "../submission-links";
 
 export type ClassRow = {
   id: string;
@@ -86,7 +87,7 @@ export function publicClass(row: ClassRow) {
     name: row.name,
     code: row.code,
     submissionUrl: row.submission_url ?? "",
-    submissionLabel: row.submission_label ?? "作品繳交連結",
+    submissionLabel: row.submission_label ?? ILC_SCRATCH_LABEL,
     status: row.status ?? "pending",
     reviewedAt: row.reviewed_at ?? null,
     createdAt: row.created_at,
@@ -129,8 +130,8 @@ export async function getStudentProgress(studentId: string) {
   const db = await ensureDb();
   const submissions = await db
     .prepare(
-      `SELECT id, student_id, chapter_no, file_name, file_size, checklist_json,
-        auto_score, status, external_status, feedback, created_at, updated_at
+        `SELECT id, student_id, chapter_no, file_name, file_size, checklist_json,
+          auto_score, status, external_status, project_url, feedback, created_at, updated_at
        FROM submissions
        WHERE student_id = ?
        ORDER BY chapter_no ASC`

@@ -6,6 +6,7 @@ import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
 import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
 import { authorizedFetch, firebaseAuth, signInWithGoogle, signOutFirebase } from "./firebase-client";
 import { CourseLibrary } from "./library/CourseLibrary";
+import { ILC_SCRATCH_HOME, ILC_SCRATCH_LABEL, isIlcScratchPlatform } from "./submission-links";
 
 export type AppMode = "library" | "student" | "teacher" | "admin" | "map" | "chapter";
 
@@ -61,6 +62,8 @@ type Submission = {
   status: string;
   external_status?: string;
   externalStatus?: string;
+  project_url?: string;
+  projectUrl?: string;
   feedback?: string;
   updated_at?: string;
   updatedAt?: string;
@@ -189,7 +192,23 @@ function submissionUrlOf(item?: ClassInfo | null) {
 }
 
 function submissionLabelOf(item?: ClassInfo | null) {
-  return item?.submissionLabel ?? item?.submission_label ?? "作品繳交連結";
+  return item?.submissionLabel ?? item?.submission_label ?? ILC_SCRATCH_LABEL;
+}
+
+function projectUrlOf(item?: Submission | null) {
+  return item?.projectUrl ?? item?.project_url ?? "";
+}
+
+function projectUrlsOf(item?: Submission | null) {
+  const value = projectUrlOf(item);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter((url): url is string => typeof url === "string");
+  } catch {
+    // Older submissions stored one plain URL.
+  }
+  return [value];
 }
 
 function accountStatusLabel(status?: string) {
@@ -553,7 +572,9 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         data.submission.status === "passed"
           ? "檢核通過，已取得本章徽章。"
           : data.submission.status === "ready_to_upload"
-            ? "自我檢核通過，接著請到老師指定的雲端空間繳交。"
+            ? isIlcScratchPlatform(submissionUrlOf(studentClass))
+              ? "自我檢核通過，接著請貼上宜蘭 Scratch 作品連結。"
+              : "自我檢核通過，接著請到老師指定的收件頁面繳交。"
             : data.submission.missing.length > 0
               ? `還有 ${data.submission.missing.length} 項需要修正，請查看下方檢核結果。`
               : "還有檢核項目需要修正。"
@@ -587,6 +608,33 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     }
   }
 
+  async function submitProjectLink(event: FormEvent<HTMLFormElement>, submissionId: string) {
+    event.preventDefault();
+    if (!student) return;
+    setBusy(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      const data = await readJson<{ submissions: Submission[]; badges: Badge[] }>(
+        await authorizedFetch("/api/submissions", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "submit_project",
+            submissionId,
+            projectUrls: form.getAll("projectUrl"),
+          }),
+        })
+      );
+      setSubmissions(data.submissions);
+      setBadges(data.badges);
+      show("success", "作品連結已交給老師，確認後就會取得徽章。");
+    } catch (error) {
+      show("error", error instanceof Error ? error.message : "無法繳交作品連結。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveSubmissionSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!teacher || !selectedClassId) return;
@@ -608,7 +656,11 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       setClasses(nextClasses);
       setDashboard((current) => ({ ...current, class: data.class }));
       localStorage.setItem("scratch-classes", JSON.stringify(nextClasses));
-      show("success", submissionUrlOf(data.class) ? "已儲存這個班級的作品繳交連結。" : "已取消這個班級的外部繳交。");
+      show("success", isIlcScratchPlatform(submissionUrlOf(data.class))
+        ? "已設定學生使用宜蘭 Scratch 作品連結繳交。"
+        : submissionUrlOf(data.class)
+          ? "已儲存這個班級的外部收件設定。"
+          : "已取消這個班級的外部繳交。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "無法儲存繳交設定。");
     } finally {
@@ -937,7 +989,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
             </button>
           </h1>
           <p className="hero__copy">
-            12 堂射擊遊戲課程，學生在裝置上完成自我檢核，老師以自選雲端收件並掌握進度。
+            12 堂射擊遊戲課程，學生在裝置上完成自我檢核，再以宜蘭 Scratch 作品連結繳交。
           </p>
           <div className="hero__actions">
             <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>
@@ -973,8 +1025,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
             <small>{student ? "已取得徽章" : "進度資料"}</small>
           </div>
           <div>
-            <span>{student ? `${progressPercent}%` : "Drive"}</span>
-            <small>{student ? "完成率" : "雲端繳交"}</small>
+            <span>{student ? `${progressPercent}%` : "ILC"}</span>
+            <small>{student ? "完成率" : "作品繳交"}</small>
           </div>
         </div>
       </section>
@@ -1100,6 +1152,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                     onToggle={toggleCheck}
                     onSubmit={submitChapter}
                     onMarkUploaded={markExternalUploaded}
+                    onSubmitProject={submitProjectLink}
                   />
 
                   <div className="badge-wall">
@@ -1203,31 +1256,34 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                     >
                     <div>
                       <span>作品繳交設定</span>
-                      <strong>由老師管理雲端原始檔</strong>
+                      <strong>學生貼上作品專案連結</strong>
                     </div>
                     <label>
-                      按鈕名稱
+                      平台名稱
                       <input
                         name="submissionLabel"
                         defaultValue={submissionLabelOf(dashboard.class)}
-                        placeholder="例如：繳交到五年甲班 Google 表單"
+                        placeholder={ILC_SCRATCH_LABEL}
                       />
                     </label>
                     <label className="submission-url-field">
-                      收件連結
+                      作品平台網址
                       <input
                         name="submissionUrl"
                         type="url"
                         defaultValue={submissionUrlOf(dashboard.class)}
-                        placeholder="https://forms.google.com/..."
+                        placeholder={ILC_SCRATCH_HOME}
                       />
                     </label>
                     <button disabled={busy}>儲存繳交設定</button>
                     {submissionUrlOf(dashboard.class) && (
                       <a href={submissionUrlOf(dashboard.class)} target="_blank" rel="noreferrer">
-                        開啟收件頁面
+                        開啟作品平台
                       </a>
                     )}
+                    <small className="submission-settings__hint">
+                      使用宜蘭 Scratch 時填入 {ILC_SCRATCH_HOME}；學生完成檢核後，貼上自己的 /projects/作品編號/ 連結。
+                    </small>
                     </form>
 
                     <TeacherDashboard
@@ -1387,6 +1443,7 @@ function ChapterSubmit({
   onToggle,
   onSubmit,
   onMarkUploaded,
+  onSubmitProject,
 }: {
   chapter: (typeof chapters)[number];
   submission?: Submission;
@@ -1399,7 +1456,11 @@ function ChapterSubmit({
   onToggle: (chapterNo: number, checkId: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>, chapterNo: number) => void;
   onMarkUploaded: (submissionId: string) => void;
+  onSubmitProject: (event: FormEvent<HTMLFormElement>, submissionId: string) => void;
 }) {
+  const usesIlcScratch = isIlcScratchPlatform(submissionUrl);
+  const submittedProjectUrls = projectUrlsOf(submission);
+
   return (
     <article className={`chapter-panel chapter-panel--${chapter.color}`}>
       <div className="chapter-panel__head">
@@ -1483,12 +1544,39 @@ function ChapterSubmit({
         <button disabled={busy}>{chapter.submissionTasks ? "檢核兩份作品" : isAutomaticChapter(chapter.no) ? "開始自動檢核" : "送出檢核"}</button>
       </form>
 
-      {submission && submissionUrl && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
+      {submission && submissionUrl && usesIlcScratch && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
+        <form className="external-submit project-link-submit" onSubmit={(event) => onSubmitProject(event, submission.id)}>
+          <div>
+            <span>第二步</span>
+            <strong>貼上宜蘭 Scratch 作品連結</strong>
+            <p>先在宜蘭 Scratch 儲存並分享作品，再複製專案頁網址。</p>
+          </div>
+          <div className="project-link-submit__fields">
+            {(chapter.submissionTasks ?? [{ id: "default", title: "本章作品" }]).map((task, index) => (
+              <label key={task.id}>
+                {chapter.submissionTasks ? `${index + 1}. ${task.title}` : "作品網址"}
+                <input
+                  name="projectUrl"
+                  type="url"
+                  required
+                  placeholder="https://s3.ilc.edu.tw/projects/356121701/"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="project-link-submit__actions">
+            <a href={submissionUrl} target="_blank" rel="noreferrer">開啟宜蘭 Scratch</a>
+            <button disabled={busy}>繳交作品連結</button>
+          </div>
+        </form>
+      )}
+
+      {submission && submissionUrl && !usesIlcScratch && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
         <div className="external-submit">
           <div>
             <span>第二步</span>
             <strong>{chapter.submissionTasks ? "將兩份原始作品繳交給老師" : "將原始作品繳交給老師"}</strong>
-            <p>上傳完成後，回到這裡通知老師。</p>
+            <p>完成外部繳交後，回到這裡通知老師。</p>
           </div>
           <a href={submissionUrl} target="_blank" rel="noreferrer">{submissionLabel}</a>
           <button type="button" disabled={busy} onClick={() => onMarkUploaded(submission.id)}>
@@ -1504,12 +1592,17 @@ function ChapterSubmit({
             <strong>等待老師確認作品</strong>
             <p>老師確認後，本章徽章會自動點亮。</p>
           </div>
+          {submittedProjectUrls.map((url, index) => (
+            <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer">
+              查看已繳交作品{submittedProjectUrls.length > 1 ? ` ${index + 1}` : ""}
+            </a>
+          ))}
         </div>
       )}
 
       {submission && (
         <div className="latest">
-          <span>最近上傳</span>
+          <span>最近檢核</span>
           <strong>{submission.file_name ?? submission.fileName}</strong>
           <b>{statusLabel(submission.status)}</b>
         </div>
@@ -1816,10 +1909,22 @@ function TeacherDashboard({
                     return (
                       <td key={chapter.no} className={earned ? "cell-pass" : submission ? "cell-wait" : ""}>
                         {earned ? (
-                          "徽章"
+                          <div className="review-actions">
+                            <span>徽章</span>
+                            {projectUrlsOf(submission).map((url, index, urls) => (
+                              <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer">
+                                作品{urls.length > 1 ? index + 1 : ""}
+                              </a>
+                            ))}
+                          </div>
                         ) : submission?.status === "uploaded" ? (
                           <div className="review-actions">
                             <span>待確認</span>
+                            {projectUrlsOf(submission).map((url, index, urls) => (
+                              <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer">
+                                開啟作品{urls.length > 1 ? index + 1 : ""}
+                              </a>
+                            ))}
                             <button disabled={busy} onClick={() => onReview(submission.id, "confirm")}>
                               收到
                             </button>

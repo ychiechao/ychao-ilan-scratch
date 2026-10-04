@@ -41,6 +41,7 @@ test("server-renders the public course library as the homepage", async () => {
   assert.match(html, /課程地圖/);
   assert.match(html, /<button class="active">公開課程庫<\/button>/);
   assert.doesNotMatch(html, /href="\/learn"|href="\/studio"/);
+  assert.match(html, /宜蘭 Scratch 作品連結繳交/);
 });
 
 test("server-renders the legacy course platform by mode", async () => {
@@ -93,6 +94,8 @@ test("server-renders a standalone chapter page", async () => {
   assert.match(html, /章節影片/);
   assert.match(html, /自我檢核/);
   assert.match(html, /我已將作品下載為 \.sb3 檔案/);
+  assert.match(html, /貼上專案連結/);
+  assert.match(html, /檢核並繳交連結/);
   assert.match(html, /youtube\.com\/embed\/NSIGbZ9j3zY/);
   assert.doesNotMatch(html, /embed\/videoseries/);
   assert.match(html, /href="\/chapters\/2"/);

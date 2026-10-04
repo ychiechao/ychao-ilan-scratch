@@ -798,6 +798,43 @@ select:focus {
   text-decoration: none;
 }
 
+.project-link-submit {
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 1fr) auto;
+}
+
+.project-link-submit label {
+  color: var(--green-dark);
+  display: grid;
+  font-size: 0.8rem;
+  font-weight: 900;
+  gap: 5px;
+}
+
+.project-link-submit__fields {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.project-link-submit input {
+  background: white;
+  min-width: 0;
+}
+
+.project-link-submit__actions {
+  align-items: stretch;
+  display: flex !important;
+  flex-direction: column;
+  gap: 6px !important;
+}
+
+.project-link-submit__actions a,
+.project-link-submit__actions button {
+  font-size: 0.82rem;
+  min-height: 36px;
+  padding: 8px 11px;
+  text-align: center;
+}
+
 .external-submit--waiting {
   background: #fff5cf;
   border-color: #e1c96d;
@@ -1178,6 +1215,12 @@ button.danger {
   grid-column: 1 / -1;
 }
 
+.submission-settings__hint {
+  color: var(--muted);
+  grid-column: 1 / -1;
+  line-height: 1.5;
+}
+
 .review-actions {
   display: grid;
   gap: 5px;
@@ -1191,6 +1234,18 @@ button.danger {
 .review-actions button {
   min-height: 30px;
   padding: 4px 7px;
+}
+
+.review-actions a {
+  background: var(--ink);
+  border-radius: 6px;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 6px;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .teacher-tools div {

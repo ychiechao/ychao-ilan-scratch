@@ -1,6 +1,7 @@
 import { cleanText, createId, generateClassCode, jsonError, publicClass } from "../_lib";
 import { ensureDb } from "../../../db";
 import { requireTeacher } from "../auth";
+import { ILC_SCRATCH_HOME, ILC_SCRATCH_LABEL, isIlcScratchPlatform } from "../../submission-links";
 
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as {
@@ -42,9 +43,11 @@ export async function POST(request: Request) {
   const code = await generateClassCode();
   await db
     .prepare(
-      "INSERT INTO classes (id, teacher_id, name, code, status) VALUES (?, ?, ?, ?, 'pending')"
+      `INSERT INTO classes (
+        id, teacher_id, name, code, submission_url, submission_label, status
+      ) VALUES (?, ?, ?, ?, ?, ?, 'pending')`
     )
-    .bind(classId, teacherId, name, code)
+    .bind(classId, teacherId, name, code, ILC_SCRATCH_HOME, ILC_SCRATCH_LABEL)
     .run();
 
   if (courseVersionId) {
@@ -72,8 +75,8 @@ export async function PATCH(request: Request) {
   if (actor instanceof Response) return actor;
   const teacherId = actor.teacher.id;
   const classId = cleanText(payload?.classId, 80);
-  const submissionUrl = cleanText(payload?.submissionUrl, 500);
-  const submissionLabel = cleanText(payload?.submissionLabel, 40) || "作品繳交連結";
+  let submissionUrl = cleanText(payload?.submissionUrl, 500);
+  let submissionLabel = cleanText(payload?.submissionLabel, 40) || ILC_SCRATCH_LABEL;
 
   if (!classId) {
     return jsonError("缺少老師或班級資料。");
@@ -86,6 +89,10 @@ export async function PATCH(request: Request) {
     } catch {
       return jsonError("請輸入完整的雲端繳交網址。");
     }
+  }
+  if (isIlcScratchPlatform(submissionUrl)) {
+    submissionUrl = ILC_SCRATCH_HOME;
+    submissionLabel = submissionLabel || ILC_SCRATCH_LABEL;
   }
 
   const db = await ensureDb();

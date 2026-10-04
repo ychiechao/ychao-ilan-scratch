@@ -57,6 +57,13 @@
       "when": 1790899200000,
       "tag": "0007_admin_management",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791068400000,
+      "tag": "0008_ilc_scratch_submissions",
+      "breakpoints": true
     }
   ]
 }

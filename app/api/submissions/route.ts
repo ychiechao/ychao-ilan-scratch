@@ -8,6 +8,7 @@ import {
   scoreChecklist,
 } from "../_lib";
 import { requireStudent, requireTeacher } from "../auth";
+import { isIlcScratchPlatform, normalizeIlcScratchProjectUrl } from "../../submission-links";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -72,8 +73,8 @@ export async function POST(request: Request) {
     .prepare(
       `INSERT INTO submissions (
         id, student_id, chapter_no, file_name, file_key, file_size,
-        checklist_json, auto_score, status, external_status, feedback, updated_at
-      ) VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        checklist_json, auto_score, status, external_status, project_url, feedback, updated_at
+      ) VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, '', ?, CURRENT_TIMESTAMP)
       ON CONFLICT(student_id, chapter_no) DO UPDATE SET
         id = excluded.id,
         file_name = excluded.file_name,
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
         auto_score = excluded.auto_score,
         status = excluded.status,
         external_status = excluded.external_status,
+        project_url = '',
         feedback = excluded.feedback,
         updated_at = CURRENT_TIMESTAMP`
     )
@@ -98,7 +100,9 @@ export async function POST(request: Request) {
       externalStatus,
       result.passed
         ? usesExternalSubmission
-          ? "自我檢核通過，請到老師指定的雲端空間繳交。"
+          ? isIlcScratchPlatform(student.submission_url)
+            ? "自我檢核通過，請貼上宜蘭 Scratch 作品連結。"
+            : "自我檢核通過，請到老師指定的收件頁面繳交。"
           : "完成本章自我檢核。"
         : `尚缺 ${result.missing.length} 項檢核。`
     )
@@ -124,10 +128,60 @@ export async function PATCH(request: Request) {
     studentId?: string;
     teacherId?: string;
     submissionId?: string;
+    projectUrl?: string;
+    projectUrls?: string[];
   } | null;
   const action = cleanText(payload?.action, 30);
   const submissionId = cleanText(payload?.submissionId, 80);
   const db = await ensureDb();
+
+  if (action === "submit_project") {
+    const actor = await requireStudent(request);
+    if (actor instanceof Response) return actor;
+    const rawProjectUrls = Array.isArray(payload?.projectUrls)
+      ? payload.projectUrls
+      : [payload?.projectUrl];
+    const projectUrls = rawProjectUrls
+      .map((value) => normalizeIlcScratchProjectUrl(cleanText(value, 500)));
+    if (projectUrls.length === 0 || projectUrls.some((url) => !url)) {
+      return jsonError("請貼上完整的宜蘭 Scratch 作品網址，例如 https://s3.ilc.edu.tw/projects/356121701/。");
+    }
+    const submission = await db.prepare(
+      `SELECT s.chapter_no
+       FROM submissions s
+       JOIN students st ON st.id = s.student_id
+       JOIN classes c ON c.id = st.class_id
+       JOIN teachers t ON t.id = c.teacher_id
+       WHERE s.id = ? AND s.student_id = ? AND s.status IN ('ready_to_upload', 'resubmit')
+         AND c.status = 'active' AND t.status = 'active'
+         AND c.submission_url LIKE 'https://s3.ilc.edu.tw/%'`
+    ).bind(submissionId, actor.student.id).first<{ chapter_no: number }>();
+    if (!submission) return jsonError("找不到可繳交的章節，請先完成自我檢核。", 404);
+    const expectedProjectCount = getChapter(submission.chapter_no)?.submissionTasks?.length ?? 1;
+    if (projectUrls.length !== expectedProjectCount) {
+      return jsonError(`本章需要繳交 ${expectedProjectCount} 個作品連結。`);
+    }
+    const storedProjectUrls = JSON.stringify(projectUrls);
+    const result = await db
+      .prepare(
+        `UPDATE submissions SET status = 'uploaded', external_status = 'reported', project_url = ?,
+          feedback = '學生已繳交宜蘭 Scratch 作品連結，等待老師確認。', updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND student_id = ? AND status IN ('ready_to_upload', 'resubmit')
+           AND EXISTS (
+             SELECT 1 FROM students st
+             JOIN classes c ON c.id = st.class_id
+             JOIN teachers t ON t.id = c.teacher_id
+             WHERE st.id = submissions.student_id AND c.status = 'active' AND t.status = 'active'
+               AND c.submission_url LIKE 'https://s3.ilc.edu.tw/%'
+           )`
+      )
+      .bind(storedProjectUrls, submissionId, actor.student.id)
+      .run();
+    if (!result.meta.changes) return jsonError("找不到可繳交的章節，請先完成自我檢核。", 404);
+    await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'student', ?, 'project_submitted', ?)")
+      .bind(createId("activity"), actor.student.id, JSON.stringify({ submissionId, projectUrls })).run();
+    return Response.json(await getStudentProgress(actor.student.id));
+  }
 
   if (action === "mark_uploaded") {
     const actor = await requireStudent(request);
@@ -135,12 +189,13 @@ export async function PATCH(request: Request) {
     const studentId = actor.student.id;
     const result = await db
       .prepare(
-        `UPDATE submissions SET status = 'uploaded', external_status = 'reported',
+        `UPDATE submissions SET status = 'uploaded', external_status = 'reported', project_url = '',
           feedback = '學生已回報完成雲端繳交，等待老師確認。', updated_at = CURRENT_TIMESTAMP
          WHERE id = ? AND student_id = ? AND status IN ('ready_to_upload', 'resubmit')
            AND EXISTS (
              SELECT 1 FROM students st JOIN classes c ON c.id = st.class_id JOIN teachers t ON t.id = c.teacher_id
              WHERE st.id = submissions.student_id AND c.status = 'active' AND t.status = 'active'
+               AND c.submission_url NOT LIKE 'https://s3.ilc.edu.tw/%'
            )`
       )
       .bind(submissionId, studentId)
@@ -185,7 +240,7 @@ export async function PATCH(request: Request) {
   } else {
     await db
       .prepare(
-        `UPDATE submissions SET status = 'resubmit', external_status = 'waiting_student',
+        `UPDATE submissions SET status = 'resubmit', external_status = 'waiting_student', project_url = '',
           feedback = '老師尚未找到作品，請重新繳交。', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
       )
       .bind(submissionId)

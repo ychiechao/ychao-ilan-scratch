@@ -180,10 +180,10 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               ))}
             </div>
             <p className="lesson-submit-hint">
-              完成檢核後，到老師指定的雲端空間繳交 .sb3。老師確認後會取得「{chapter.badge}」。
+              完成檢核後，在宜蘭 Scratch 儲存並分享作品，再貼上專案連結。老師確認後會取得「{chapter.badge}」。
             </p>
             <a className="lesson-submit-link" href={studentCheckUrl}>
-              到學生入口上傳作品
+              到學生入口檢核並繳交連結
             </a>
           </section>
 

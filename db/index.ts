@@ -40,8 +40,8 @@ const createStatements = [
     teacher_id TEXT NOT NULL,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
-    submission_url TEXT NOT NULL DEFAULT '',
-    submission_label TEXT NOT NULL DEFAULT '作品繳交連結',
+    submission_url TEXT NOT NULL DEFAULT 'https://s3.ilc.edu.tw/',
+    submission_label TEXT NOT NULL DEFAULT '宜蘭 Scratch 作品',
     status TEXT NOT NULL DEFAULT 'pending',
     reviewed_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -74,6 +74,7 @@ const createStatements = [
     auto_score INTEGER NOT NULL,
     status TEXT NOT NULL,
     external_status TEXT NOT NULL DEFAULT 'not_required',
+    project_url TEXT NOT NULL DEFAULT '',
     feedback TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -289,6 +290,10 @@ export async function ensureDb() {
   }
   if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "last_active_at")) {
     await db.prepare("ALTER TABLE students ADD last_active_at TEXT").run();
+  }
+  const submissionColumns = await db.prepare("PRAGMA table_info(submissions)").all<{ name: string }>();
+  if ((submissionColumns.results ?? []).length > 0 && !(submissionColumns.results ?? []).some((column) => column.name === "project_url")) {
+    await db.prepare("ALTER TABLE submissions ADD project_url TEXT NOT NULL DEFAULT ''").run();
   }
   const assetColumns = await db.prepare("PRAGMA table_info(file_assets)").all<{ name: string }>();
   if ((assetColumns.results ?? []).length > 0 && !(assetColumns.results ?? []).some((column) => column.name === "storage_provider")) {
