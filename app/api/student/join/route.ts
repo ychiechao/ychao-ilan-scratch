@@ -39,17 +39,48 @@ export async function POST(request: Request) {
   const db = await ensureDb();
   const classRow = await db
     .prepare(
-      `SELECT c.*, school.name AS class_school FROM classes c
+      `SELECT c.*, school.name AS class_school,
+         t.status AS teacher_status, school.enabled AS school_enabled
+       FROM classes c
        JOIN teachers t ON t.id = c.teacher_id
        LEFT JOIN schools school ON school.id = c.school_id
-       WHERE c.code = ? AND c.status = 'active' AND c.archived = 0 AND c.enrollment_enabled = 1
-         AND t.status = 'active' AND (c.school_id IS NULL OR school.enabled = 1)`
+       WHERE c.code = ?`
     )
     .bind(classCode)
     .first();
 
   if (!classRow) {
-    return jsonError("找不到可加入的班級，請確認班級已通過審核且老師已開放加入。", 404);
+    return jsonError("找不到這個班級代碼，請向老師確認。", 404);
+  }
+
+  const joinableClass = classRow as {
+    status?: string;
+    archived?: number;
+    enrollment_enabled?: number;
+    teacher_status?: string;
+    school_id?: string | null;
+    school_enabled?: number | null;
+  };
+
+  if (Number(joinableClass.archived) === 1) {
+    return jsonError("這個班級已封存，無法加入。", 403);
+  }
+  if (joinableClass.status !== "active") {
+    return jsonError(
+      joinableClass.status === "pending"
+        ? "這個班級仍在等待超級管理者審核。"
+        : "這個班級目前已停用。",
+      403
+    );
+  }
+  if (joinableClass.teacher_status !== "active") {
+    return jsonError("這個班級的教師帳號目前未啟用，請聯絡管理者。", 403);
+  }
+  if (joinableClass.school_id && Number(joinableClass.school_enabled) !== 1) {
+    return jsonError("這個班級所屬學校目前已停用，請聯絡管理者。", 403);
+  }
+  if (Number(joinableClass.enrollment_enabled) !== 1) {
+    return jsonError("老師目前尚未開放學生加入這個班級。", 403);
   }
 
   const existing = await db
