@@ -9,7 +9,10 @@ export type ClassRow = {
   code: string;
   submission_url?: string;
   submission_label?: string;
+  school_id?: string | null;
+  school_name?: string | null;
   enrollment_enabled?: number;
+  archived?: number;
   status?: string;
   reviewed_at?: string;
   created_at: string;
@@ -21,6 +24,11 @@ export type StudentRow = {
   seat_no: string;
   nickname: string;
   email?: string | null;
+  school_id?: string | null;
+  school_name?: string;
+  school_source?: string;
+  school_verified?: number;
+  status?: string;
   pin_hash: string;
   created_at: string;
 };
@@ -89,7 +97,10 @@ export function publicClass(row: ClassRow) {
     code: row.code,
     submissionUrl: row.submission_url ?? "",
     submissionLabel: row.submission_label ?? ILC_SCRATCH_LABEL,
+    schoolId: row.school_id ?? "",
+    schoolName: row.school_name ?? "",
     enrollmentEnabled: Boolean(row.enrollment_enabled ?? 1),
+    archived: Boolean(row.archived ?? 0),
     status: row.status ?? "pending",
     reviewedAt: row.reviewed_at ?? null,
     createdAt: row.created_at,
@@ -103,6 +114,11 @@ export function publicStudent(row: StudentRow) {
     seatNo: row.seat_no,
     nickname: row.nickname,
     email: row.email ?? "",
+    schoolId: row.school_id ?? "",
+    schoolName: row.school_name ?? "",
+    schoolSource: row.school_source ?? "class",
+    schoolVerified: Boolean(row.school_verified ?? 0),
+    status: row.status ?? "active",
     createdAt: row.created_at,
   };
 }

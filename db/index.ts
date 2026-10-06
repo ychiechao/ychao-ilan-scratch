@@ -21,6 +21,15 @@ export function getD1() {
 }
 
 const createStatements = [
+  `CREATE TABLE IF NOT EXISTS schools (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    domains_json TEXT NOT NULL DEFAULT '[]',
+    division TEXT NOT NULL DEFAULT 'unclassified',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
   `CREATE TABLE IF NOT EXISTS teachers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -30,6 +39,7 @@ const createStatements = [
     role TEXT NOT NULL DEFAULT 'teacher',
     status TEXT NOT NULL DEFAULT 'pending',
     must_change_pin INTEGER NOT NULL DEFAULT 0,
+    school_id TEXT,
     school_name TEXT NOT NULL DEFAULT '',
     last_login_at TEXT,
     last_active_at TEXT,
@@ -42,7 +52,9 @@ const createStatements = [
     code TEXT NOT NULL UNIQUE,
     submission_url TEXT NOT NULL DEFAULT '',
     submission_label TEXT NOT NULL DEFAULT '宜蘭 Scratch 作品',
+    school_id TEXT,
     enrollment_enabled INTEGER NOT NULL DEFAULT 1,
+    archived INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
     reviewed_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,13 +68,25 @@ const createStatements = [
     email TEXT,
     firebase_uid TEXT,
     pin_hash TEXT NOT NULL,
+    school_id TEXT,
     school_name TEXT NOT NULL DEFAULT '',
+    school_source TEXT NOT NULL DEFAULT 'class',
+    school_verified INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'active',
     last_login_at TEXT,
     last_active_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id),
     UNIQUE (class_id, seat_no)
+  )`,
+  `CREATE TABLE IF NOT EXISTS teacher_school_assignments (
+    id TEXT PRIMARY KEY,
+    teacher_id TEXT NOT NULL,
+    school_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id),
+    FOREIGN KEY (school_id) REFERENCES schools(id),
+    UNIQUE (teacher_id, school_id)
   )`,
   `CREATE TABLE IF NOT EXISTS submissions (
     id TEXT PRIMARY KEY,
@@ -253,7 +277,10 @@ const createStatements = [
     applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
   `CREATE INDEX IF NOT EXISTS classes_teacher_idx ON classes (teacher_id)`,
+  `CREATE INDEX IF NOT EXISTS classes_school_idx ON classes (school_id)`,
   `CREATE INDEX IF NOT EXISTS students_class_idx ON students (class_id)`,
+  `CREATE INDEX IF NOT EXISTS students_school_idx ON students (school_id)`,
+  `CREATE INDEX IF NOT EXISTS teacher_school_assignments_teacher_idx ON teacher_school_assignments (teacher_id, school_id)`,
   `CREATE INDEX IF NOT EXISTS submissions_student_idx ON submissions (student_id)`,
   `CREATE INDEX IF NOT EXISTS badges_student_idx ON badges (student_id)`,
   `CREATE INDEX IF NOT EXISTS admin_sessions_admin_idx ON admin_sessions (admin_id)`,
@@ -280,6 +307,9 @@ export async function ensureDb() {
   if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "school_name")) {
     await db.prepare("ALTER TABLE teachers ADD school_name TEXT NOT NULL DEFAULT ''").run();
   }
+  if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "school_id")) {
+    await db.prepare("ALTER TABLE teachers ADD school_id TEXT").run();
+  }
   if ((teacherColumns.results ?? []).length > 0 && !(teacherColumns.results ?? []).some((column) => column.name === "last_login_at")) {
     await db.prepare("ALTER TABLE teachers ADD last_login_at TEXT").run();
   }
@@ -290,6 +320,12 @@ export async function ensureDb() {
   if ((classColumns.results ?? []).length > 0 && !(classColumns.results ?? []).some((column) => column.name === "enrollment_enabled")) {
     await db.prepare("ALTER TABLE classes ADD enrollment_enabled INTEGER NOT NULL DEFAULT 1").run();
   }
+  if ((classColumns.results ?? []).length > 0 && !(classColumns.results ?? []).some((column) => column.name === "school_id")) {
+    await db.prepare("ALTER TABLE classes ADD school_id TEXT").run();
+  }
+  if ((classColumns.results ?? []).length > 0 && !(classColumns.results ?? []).some((column) => column.name === "archived")) {
+    await db.prepare("ALTER TABLE classes ADD archived INTEGER NOT NULL DEFAULT 0").run();
+  }
   const studentColumns = await db.prepare("PRAGMA table_info(students)").all<{ name: string }>();
   if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "email")) {
     await db.prepare("ALTER TABLE students ADD email TEXT").run();
@@ -299,6 +335,15 @@ export async function ensureDb() {
   }
   if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "school_name")) {
     await db.prepare("ALTER TABLE students ADD school_name TEXT NOT NULL DEFAULT ''").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "school_id")) {
+    await db.prepare("ALTER TABLE students ADD school_id TEXT").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "school_source")) {
+    await db.prepare("ALTER TABLE students ADD school_source TEXT NOT NULL DEFAULT 'class'").run();
+  }
+  if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "school_verified")) {
+    await db.prepare("ALTER TABLE students ADD school_verified INTEGER NOT NULL DEFAULT 0").run();
   }
   if ((studentColumns.results ?? []).length > 0 && !(studentColumns.results ?? []).some((column) => column.name === "status")) {
     await db.prepare("ALTER TABLE students ADD status TEXT NOT NULL DEFAULT 'active'").run();

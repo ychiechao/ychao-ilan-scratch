@@ -17,8 +17,9 @@ export async function GET(request: Request) {
   const db = await ensureDb();
   const classRow = await db
     .prepare(
-      `SELECT c.* FROM classes c
+      `SELECT c.*, school.name AS school_name FROM classes c
        JOIN teachers t ON t.id = c.teacher_id
+       LEFT JOIN schools school ON school.id = c.school_id
        WHERE c.id = ? AND c.teacher_id = ? AND t.status = 'active'`
     )
     .bind(classId, teacherId)

@@ -1,6 +1,18 @@
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
+export const schools = sqliteTable("schools", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  domainsJson: text("domains_json").notNull().default("[]"),
+  division: text("division").notNull().default("unclassified"),
+  enabled: integer("enabled").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("schools_name_idx").on(table.name),
+]);
+
 export const teachers = sqliteTable("teachers", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -10,6 +22,7 @@ export const teachers = sqliteTable("teachers", {
   role: text("role").notNull().default("teacher"),
   status: text("status").notNull().default("pending"),
   mustChangePin: integer("must_change_pin").notNull().default(0),
+  schoolId: text("school_id").references(() => schools.id),
   schoolName: text("school_name").notNull().default(""),
   lastLoginAt: text("last_login_at"),
   lastActiveAt: text("last_active_at"),
@@ -26,7 +39,9 @@ export const classes = sqliteTable("classes", {
   code: text("code").notNull(),
   submissionUrl: text("submission_url").notNull().default(""),
   submissionLabel: text("submission_label").notNull().default("宜蘭 Scratch 作品"),
+  schoolId: text("school_id").references(() => schools.id),
   enrollmentEnabled: integer("enrollment_enabled").notNull().default(1),
+  archived: integer("archived").notNull().default(0),
   status: text("status").notNull().default("pending"),
   reviewedAt: text("reviewed_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -42,7 +57,10 @@ export const students = sqliteTable("students", {
   email: text("email"),
   firebaseUid: text("firebase_uid"),
   pinHash: text("pin_hash").notNull(),
+  schoolId: text("school_id").references(() => schools.id),
   schoolName: text("school_name").notNull().default(""),
+  schoolSource: text("school_source").notNull().default("class"),
+  schoolVerified: integer("school_verified").notNull().default(0),
   status: text("status").notNull().default("active"),
   lastLoginAt: text("last_login_at"),
   lastActiveAt: text("last_active_at"),
@@ -51,6 +69,15 @@ export const students = sqliteTable("students", {
   uniqueIndex("students_class_seat_idx").on(table.classId, table.seatNo),
   index("students_email_idx").on(table.email),
   index("students_firebase_uid_idx").on(table.firebaseUid),
+]);
+
+export const teacherSchoolAssignments = sqliteTable("teacher_school_assignments", {
+  id: text("id").primaryKey(),
+  teacherId: text("teacher_id").notNull().references(() => teachers.id),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("teacher_school_assignments_unique_idx").on(table.teacherId, table.schoolId),
 ]);
 
 export const courses = sqliteTable("courses", {

@@ -18,9 +18,9 @@ export async function POST(request: Request) {
 
   const db = await ensureDb();
   const teacher = await db
-    .prepare("SELECT id, name, email, pin_hash, role, status, must_change_pin FROM teachers WHERE email = ?")
+    .prepare("SELECT id, name, email, pin_hash, role, status, must_change_pin, school_id, school_name FROM teachers WHERE email = ?")
     .bind(email)
-    .first<{ id: string; name: string; email: string; pin_hash: string; role: string; status: string; must_change_pin: number }>();
+    .first<{ id: string; name: string; email: string; pin_hash: string; role: string; status: string; must_change_pin: number; school_id?: string | null; school_name?: string }>();
 
   if (!teacher) {
     return jsonError("這個 Google 帳號尚未註冊老師身分。", 401);
@@ -31,9 +31,14 @@ export async function POST(request: Request) {
     .bind(createId("activity"), teacher.id).run();
 
   const classes = await db
-    .prepare("SELECT * FROM classes WHERE teacher_id = ? ORDER BY created_at DESC")
+    .prepare("SELECT c.*, school.name AS school_name FROM classes c LEFT JOIN schools school ON school.id = c.school_id WHERE c.teacher_id = ? ORDER BY c.archived, c.created_at DESC")
     .bind(teacher.id)
     .all();
+  const schools = await db.prepare(
+    `SELECT school.id, school.name, school.division FROM teacher_school_assignments tsa
+     JOIN schools school ON school.id = tsa.school_id
+     WHERE tsa.teacher_id = ? AND school.enabled = 1 ORDER BY school.name`
+  ).bind(teacher.id).all();
 
   return Response.json({
     teacher: {
@@ -42,6 +47,9 @@ export async function POST(request: Request) {
       email: teacher.email,
       role: teacher.role,
       status: teacher.status,
+      schoolId: teacher.school_id ?? "",
+      schoolName: teacher.school_name ?? "",
+      schools: schools.results ?? [],
       mustChangePin: Boolean(teacher.must_change_pin),
     },
     classes: (classes.results ?? []).map((row) => publicClass(row as never)),

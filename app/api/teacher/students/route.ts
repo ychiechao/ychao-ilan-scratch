@@ -6,7 +6,7 @@ async function ownedActiveClass(db: D1Database, teacherId: string, classId: stri
   return db
     .prepare(
       `SELECT c.id FROM classes c JOIN teachers t ON t.id = c.teacher_id
-       WHERE c.id = ? AND c.teacher_id = ? AND c.status = 'active' AND t.status = 'active'`
+       WHERE c.id = ? AND c.teacher_id = ? AND c.status = 'active' AND c.archived = 0 AND t.status = 'active'`
     )
     .bind(classId, teacherId)
     .first();
@@ -32,11 +32,17 @@ export async function POST(request: Request) {
     .bind(classId, email, seatNo)
     .first();
   if (duplicate) return jsonError("這個座號或 Email 已經存在。");
+  const classInfo = await db.prepare(
+    `SELECT c.school_id, school.name AS school_name FROM classes c
+     LEFT JOIN schools school ON school.id = c.school_id WHERE c.id = ?`
+  ).bind(classId).first<{ school_id?: string | null; school_name?: string | null }>();
   try {
+    const studentId = createId("stu");
     await db
-      .prepare("INSERT INTO students (id, class_id, seat_no, nickname, email, pin_hash) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(createId("stu"), classId, seatNo, nickname, email, await hashPin(`${classId}:${seatNo}`, `google:${email}`))
+      .prepare("INSERT INTO students (id, class_id, seat_no, nickname, email, pin_hash, school_id, school_name, school_source, school_verified) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'class', 1)")
+      .bind(studentId, classId, seatNo, nickname, email, await hashPin(`${classId}:${seatNo}`, `google:${email}`), classInfo?.school_id ?? null, classInfo?.school_name ?? "")
       .run();
+    await logTeacherAction(db, teacherId, "student_added", { classId, studentId });
   } catch {
     return jsonError("這個座號或 Email 已經存在。");
   }
@@ -71,6 +77,7 @@ export async function PATCH(request: Request) {
       .bind(studentId, classId)
       .run();
     if (!result.meta.changes) return jsonError("找不到學生。", 404);
+    await logTeacherAction(db, teacherId, "student_status", { classId, studentId });
     return Response.json({ ok: true });
   }
 
@@ -82,6 +89,7 @@ export async function PATCH(request: Request) {
       .bind(seatNo, nickname, studentId, classId)
       .run();
     if (!result.meta.changes) return jsonError("找不到學生。", 404);
+    await logTeacherAction(db, teacherId, "student_profile", { classId, studentId });
   } catch {
     return jsonError("這個座號或 Email 已經存在。");
   }
@@ -99,12 +107,12 @@ export async function DELETE(request: Request) {
   if (!(await ownedActiveClass(db, teacherId, classId))) return jsonError("無這個班級的管理權。", 403);
   const student = await db.prepare("SELECT id FROM students WHERE id = ? AND class_id = ?").bind(studentId, classId).first();
   if (!student) return jsonError("找不到學生。", 404);
-  await db.batch([
-    db.prepare("DELETE FROM badges WHERE student_id = ?").bind(studentId),
-    db.prepare("DELETE FROM submissions WHERE student_id = ?").bind(studentId),
-    db.prepare("DELETE FROM question_results WHERE student_id = ?").bind(studentId),
-    db.prepare("DELETE FROM course_project_submissions WHERE student_id = ?").bind(studentId),
-    db.prepare("DELETE FROM students WHERE id = ?").bind(studentId),
-  ]);
+  await db.prepare("UPDATE students SET status = 'removed' WHERE id = ? AND class_id = ?").bind(studentId, classId).run();
+  await logTeacherAction(db, teacherId, "student_removed", { classId, studentId });
   return Response.json({ ok: true });
+}
+
+async function logTeacherAction(db: D1Database, teacherId: string, action: string, detail: unknown) {
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'teacher', ?, ?, ?)")
+    .bind(createId("activity"), teacherId, action, JSON.stringify(detail)).run();
 }

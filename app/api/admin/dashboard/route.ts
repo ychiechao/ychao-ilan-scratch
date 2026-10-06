@@ -7,14 +7,16 @@ export async function GET(request: Request) {
   if (admin instanceof Response) return admin;
   const db = await ensureDb();
   const teachers = await db.prepare(
-    `SELECT id, name, email, role, status, must_change_pin, school_name,
+    `SELECT id, name, email, role, status, must_change_pin, school_id, school_name,
       last_login_at, last_active_at, created_at,
+      (SELECT GROUP_CONCAT(tsa.school_id) FROM teacher_school_assignments tsa WHERE tsa.teacher_id = teachers.id) AS school_ids,
       (SELECT COUNT(*) FROM classes c WHERE c.teacher_id = teachers.id) AS class_count,
       (SELECT COUNT(*) FROM students s JOIN classes c ON c.id = s.class_id WHERE c.teacher_id = teachers.id) AS student_count
      FROM teachers ORDER BY CASE role WHEN 'superadmin' THEN 0 ELSE 1 END, created_at DESC`
   ).all();
   const students = await db.prepare(
-    `SELECT s.id, s.nickname AS name, s.email, 'student' AS role, s.status, s.school_name,
+    `SELECT s.id, s.nickname AS name, s.email, 'student' AS role, s.status,
+      s.school_id, s.school_name, s.school_source, s.school_verified,
       s.last_login_at, s.last_active_at, s.created_at, s.seat_no, c.name AS class_name,
       t.name AS teacher_name,
       (SELECT COUNT(*) FROM question_results qr WHERE qr.student_id = s.id) +
@@ -28,10 +30,22 @@ export async function GET(request: Request) {
      ORDER BY s.created_at DESC`
   ).all();
   const classes = await db.prepare(
-    `SELECT c.id, c.teacher_id, c.name, c.code, c.status, c.created_at,
+    `SELECT c.id, c.teacher_id, c.name, c.code, c.status, c.school_id,
+      c.enrollment_enabled, c.archived, c.created_at,
       t.name AS teacher_name, t.email AS teacher_email,
+      school.name AS school_name,
       (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id) AS student_count
-     FROM classes c JOIN teachers t ON t.id = c.teacher_id ORDER BY c.created_at DESC`
+     FROM classes c JOIN teachers t ON t.id = c.teacher_id
+     LEFT JOIN schools school ON school.id = c.school_id
+     ORDER BY c.archived, c.created_at DESC`
+  ).all();
+  const schools = await db.prepare(
+    `SELECT school.id, school.name, school.domains_json, school.division, school.enabled,
+      school.created_at, school.updated_at,
+      (SELECT COUNT(*) FROM teacher_school_assignments tsa WHERE tsa.school_id = school.id) AS teacher_count,
+      (SELECT COUNT(*) FROM classes c WHERE c.school_id = school.id) AS class_count,
+      (SELECT COUNT(*) FROM students s WHERE s.school_id = school.id) AS student_count
+     FROM schools school ORDER BY school.enabled DESC, school.division, school.name`
   ).all();
   const courses = await db.prepare(
     `SELECT c.id, c.title, c.summary, c.status, c.updated_at, c.current_version_id,
@@ -57,7 +71,7 @@ export async function GET(request: Request) {
   return Response.json({
     teachers: teachers.results ?? [], students: students.results ?? [],
     users: [...(teachers.results ?? []).map((item) => ({ ...item, user_type: "teacher" })), ...(students.results ?? []).map((item) => ({ ...item, user_type: "student" }))],
-    classes: classes.results ?? [], courses: courses.results ?? [], permissions: permissions.results ?? [], activity: activity.results ?? [],
+    classes: classes.results ?? [], schools: schools.results ?? [], courses: courses.results ?? [], permissions: permissions.results ?? [], activity: activity.results ?? [],
     fileStorage: referenceStorageStatus(),
   });
 }

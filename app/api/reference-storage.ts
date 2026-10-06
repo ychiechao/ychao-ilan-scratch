@@ -151,6 +151,6 @@ function unavailableError() {
 }
 
 async function remoteError(response: Response, fallback: string) {
-  const data = await response.json<{ error?: string }>().catch(() => ({}));
+  const data: { error?: string } = await response.json<{ error?: string }>().catch(() => ({}));
   return new ReferenceStorageError(data.error || fallback, response.status >= 400 && response.status < 600 ? response.status : 502);
 }

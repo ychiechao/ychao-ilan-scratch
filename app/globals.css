@@ -1040,7 +1040,7 @@ button.danger {
 
 .admin-summary {
   align-items: end;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   margin: 0;
 }
 
@@ -1099,6 +1099,7 @@ button.danger {
 .admin-tabs {
   border-bottom: 1px solid var(--line);
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -1127,7 +1128,7 @@ button.danger {
   margin: 0;
 }
 
-.admin-filters input { min-width: min(360px, 42vw); }
+.admin-filters input { min-width: min(320px, 38vw); }
 .admin-user-list { display: grid; gap: 12px; margin-top: 16px; }
 
 .admin-user-card {
@@ -1161,6 +1162,10 @@ button.danger {
 .admin-user-metrics b { color: var(--ink); display: block; font-size: .88rem; margin-top: 3px; }
 .admin-user-form { align-items: end; display: grid; gap: 10px; grid-column: 1 / -1; grid-template-columns: minmax(220px, 1fr) 160px 160px auto; }
 .admin-user-form label { color: var(--muted); display: grid; font-size: .8rem; font-weight: 800; gap: 4px; }
+.admin-school-checks { border: 1px solid var(--line); border-radius: 7px; display: flex; flex-wrap: wrap; gap: 8px 14px; grid-column: 1 / -1; margin: 0; padding: 10px 12px; }
+.admin-school-checks legend { color: var(--muted); font-size: .8rem; font-weight: 900; padding: 0 5px; }
+.admin-school-checks label { align-items: center; display: flex; flex-direction: row; gap: 6px; }
+.admin-school-checks input { height: 18px; min-height: 0; width: 18px; }
 .admin-permissions { border-top: 1px solid var(--line); grid-column: 1 / -1; padding-top: 10px; }
 .admin-permissions summary { cursor: pointer; font-weight: 900; }
 .admin-permissions > div { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 10px; }
@@ -1182,6 +1187,34 @@ button.danger {
 .admin-course-list dt { color: var(--muted); font-size: .75rem; }
 .admin-course-list dd { font-weight: 900; margin: 3px 0 0; }
 .admin-course-list small { color: var(--muted); text-align: right; }
+
+.admin-school-form,
+.admin-school-card,
+.admin-class-card {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-school-form { grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr) 150px auto; }
+.admin-school-form--new { background: #eef3ee; border-radius: 8px; margin: 14px 0; padding: 14px; }
+.admin-school-list,
+.admin-class-list { display: grid; gap: 10px; }
+.admin-school-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; grid-template-columns: minmax(210px, 1fr) minmax(180px, .8fr) minmax(220px, 1fr) 140px auto auto; padding: 14px; }
+.admin-school-card__summary,
+.admin-class-card > div:first-child { align-self: center; display: grid; gap: 3px; }
+.admin-school-card__summary span,
+.admin-class-card > div:first-child span { color: var(--green-deep); font-size: .78rem; font-weight: 900; }
+.admin-school-card__summary small,
+.admin-class-card small { color: var(--muted); }
+.admin-school-form label,
+.admin-school-card > label:not(.admin-inline-check),
+.admin-class-card > label:not(.admin-inline-check) { color: var(--muted); display: grid; font-size: .8rem; font-weight: 800; gap: 4px; }
+.admin-inline-check { align-items: center; display: flex; font-size: .82rem; font-weight: 900; gap: 7px; min-height: 42px; white-space: nowrap; }
+.admin-inline-check input { height: 20px; min-height: 0; width: 20px; }
+.admin-class-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; grid-template-columns: minmax(190px, 1.1fr) auto auto minmax(170px, .9fr) 130px auto auto auto; padding: 14px; }
+.admin-class-card.is-archived { background: #f3f3f1; color: var(--muted); }
+.admin-class-card code { background: #f8faf7; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
 
 .teacher-auth form {
   display: grid;
@@ -1423,7 +1456,7 @@ button.danger {
 .teacher-tools form {
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, .8fr) minmax(180px, 1fr) auto;
 }
 
 .dashboard-summary {
@@ -2446,9 +2479,13 @@ td:first-child span {
   .admin-filters { align-items: stretch; flex-direction: column; }
   .admin-filters input { min-width: 0; width: 100%; }
   .admin-user-card,
-  .admin-course-list article { grid-template-columns: 1fr; }
+  .admin-course-list article,
+  .admin-school-form,
+  .admin-school-card,
+  .admin-class-card { grid-template-columns: 1fr; }
   .admin-user-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-user-form { grid-template-columns: 1fr; }
+  .admin-school-checks { grid-column: auto; }
   .admin-activity-list > div { grid-template-columns: 1fr; gap: 3px; }
   .admin-course-list small { text-align: left; }
 }

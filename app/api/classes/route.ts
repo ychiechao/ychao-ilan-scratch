@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     teacherId?: string;
     name?: string;
     courseVersionId?: string;
+    schoolId?: string;
   } | null;
 
   const actor = await requireTeacher(request);
@@ -15,12 +16,13 @@ export async function POST(request: Request) {
   const teacherId = actor.teacher.id;
   const name = cleanText(payload?.name) || "Scratch 基礎班";
   const courseVersionId = cleanText(payload?.courseVersionId, 100);
+  const requestedSchoolId = cleanText(payload?.schoolId, 100);
 
   const db = await ensureDb();
   const teacher = await db
-    .prepare("SELECT id, status FROM teachers WHERE id = ?")
+    .prepare("SELECT id, status, role, school_id FROM teachers WHERE id = ?")
     .bind(teacherId)
-    .first<{ id: string; status: string }>();
+    .first<{ id: string; status: string; role: string; school_id?: string | null }>();
 
   if (!teacher) {
     return jsonError("找不到老師帳號。", 404);
@@ -28,6 +30,18 @@ export async function POST(request: Request) {
   if (teacher.status !== "active") {
     return jsonError("老師帳號尚未啟用，請等待超級管理者審核。", 403);
   }
+  const schoolId = requestedSchoolId || teacher.school_id || "";
+  if (!schoolId) return jsonError("建立班級前，請先由超管指定任教學校。", 403);
+  const school = await db.prepare(
+    `SELECT school.id FROM schools school
+     WHERE school.id = ? AND school.enabled = 1
+       AND (? = 'superadmin' OR EXISTS (
+         SELECT 1 FROM teacher_school_assignments tsa WHERE tsa.teacher_id = ? AND tsa.school_id = school.id
+       ))`
+  ).bind(schoolId, teacher.role, teacherId).first();
+  if (!school) return jsonError("這所學校不在你的任教學校清單中。", 403);
+
+  const classId = createId("cls");
 
   if (courseVersionId) {
     const allowedCourse = await db.prepare(
@@ -38,17 +52,17 @@ export async function POST(request: Request) {
     ).bind(courseVersionId, teacherId).first();
     if (!allowedCourse) return jsonError("選擇的課程目前無法使用。", 403);
   }
-
-  const classId = createId("cls");
   const code = await generateClassCode();
   await db
     .prepare(
       `INSERT INTO classes (
-        id, teacher_id, name, code, submission_url, submission_label, status
-      ) VALUES (?, ?, ?, ?, ?, ?, 'pending')`
+        id, teacher_id, name, code, submission_url, submission_label, school_id, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
     )
-    .bind(classId, teacherId, name, code, "", ILC_SCRATCH_LABEL)
+    .bind(classId, teacherId, name, code, "", ILC_SCRATCH_LABEL, schoolId)
     .run();
+  await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'teacher', ?, 'class_create', ?)")
+    .bind(createId("activity"), teacherId, JSON.stringify({ classId, schoolId })).run();
 
   if (courseVersionId) {
     await db.prepare("INSERT INTO class_courses (id, class_id, course_version_id, sort_order, status) VALUES (?, ?, ?, 0, 'active')")
@@ -56,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   const classRow = await db
-    .prepare("SELECT * FROM classes WHERE id = ?")
+    .prepare("SELECT c.*, school.name AS school_name FROM classes c LEFT JOIN schools school ON school.id = c.school_id WHERE c.id = ?")
     .bind(classId)
     .first();
 
@@ -89,7 +103,7 @@ export async function PATCH(request: Request) {
       .prepare(
         `UPDATE classes
          SET enrollment_enabled = CASE enrollment_enabled WHEN 1 THEN 0 ELSE 1 END
-         WHERE id = ? AND teacher_id = ? AND status = 'active'
+         WHERE id = ? AND teacher_id = ? AND status = 'active' AND archived = 0
            AND EXISTS (SELECT 1 FROM teachers WHERE id = ? AND status = 'active')`
       )
       .bind(classId, teacherId, teacherId)
@@ -97,7 +111,9 @@ export async function PATCH(request: Request) {
     if (!result.meta.changes) {
       return jsonError("班級尚未通過審核，或這不是你的班級。", 403);
     }
-    const classRow = await db.prepare("SELECT * FROM classes WHERE id = ?").bind(classId).first();
+    await db.prepare("INSERT INTO user_activity_logs (id, user_type, user_id, action, detail_json) VALUES (?, 'teacher', ?, 'class_enrollment', ?)")
+      .bind(createId("activity"), teacherId, JSON.stringify({ classId })).run();
+    const classRow = await db.prepare("SELECT c.*, school.name AS school_name FROM classes c LEFT JOIN schools school ON school.id = c.school_id WHERE c.id = ?").bind(classId).first();
     return Response.json({ class: publicClass(classRow as never) });
   }
 
@@ -118,7 +134,7 @@ export async function PATCH(request: Request) {
     .prepare(
       `UPDATE classes
        SET submission_url = ?, submission_label = ?
-       WHERE id = ? AND teacher_id = ? AND status = 'active'
+       WHERE id = ? AND teacher_id = ? AND status = 'active' AND archived = 0
          AND EXISTS (SELECT 1 FROM teachers WHERE id = ? AND status = 'active')`
     )
     .bind(submissionUrl, submissionLabel, classId, teacherId, teacherId)
@@ -128,6 +144,6 @@ export async function PATCH(request: Request) {
     return jsonError("找不到班級，或這不是你的班級。", 404);
   }
 
-  const classRow = await db.prepare("SELECT * FROM classes WHERE id = ?").bind(classId).first();
+  const classRow = await db.prepare("SELECT c.*, school.name AS school_name FROM classes c LEFT JOIN schools school ON school.id = c.school_id WHERE c.id = ?").bind(classId).first();
   return Response.json({ class: publicClass(classRow as never) });
 }

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
        JOIN classes c ON c.id = s.class_id
        JOIN teachers t ON t.id = c.teacher_id
        WHERE (s.email = ? OR s.firebase_uid = ?) AND s.status = 'active'
-         AND c.status = 'active' AND t.status = 'active'
+         AND c.status = 'active' AND c.archived = 0 AND t.status = 'active'
        ORDER BY COALESCE(s.last_active_at, s.created_at) DESC`
     )
     .bind(email, firebaseUser.localId)

@@ -29,7 +29,7 @@ export async function GET(request: Request) {
      JOIN courses c ON c.id = cv.course_id
      JOIN teachers owner ON owner.id = c.owner_teacher_id
      WHERE (s.firebase_uid = ? OR s.email = ?) AND s.status = 'active'
-       AND cl.status = 'active' AND class_teacher.status = 'active' AND cc.status = 'active'
+       AND cl.status = 'active' AND cl.archived = 0 AND class_teacher.status = 'active' AND cc.status = 'active'
      ORDER BY cl.name, cc.sort_order, cc.created_at`
   ).bind(actor.firebase.localId, actor.firebase.email.toLowerCase()).all<Record<string, unknown>>();
   if (!courseId) return Response.json({ courses: adoptions.results ?? [] });

@@ -4,7 +4,7 @@ import { jsonError } from "./_lib";
 
 export type AuthActor = {
   firebase: FirebaseUser;
-  teacher: { id: string; name: string; email: string; role: string; status: string } | null;
+  teacher: { id: string; name: string; email: string; role: string; status: string; schoolId: string } | null;
   student: { id: string; classId: string; nickname: string; email: string } | null;
 };
 
@@ -30,12 +30,12 @@ export async function requireActor(request: Request): Promise<AuthActor | Respon
     .bind(firebase.localId, email).run();
 
   const teacher = await db.prepare(
-    "SELECT id, name, email, role, status FROM teachers WHERE firebase_uid = ? OR email = ?"
-  ).bind(firebase.localId, email).first<{ id: string; name: string; email: string; role: string; status: string }>();
+    "SELECT id, name, email, role, status, school_id FROM teachers WHERE firebase_uid = ? OR email = ?"
+  ).bind(firebase.localId, email).first<{ id: string; name: string; email: string; role: string; status: string; school_id?: string | null }>();
   const student = await db.prepare(
     `SELECT s.id, s.class_id, s.nickname, s.email FROM students s
      JOIN classes c ON c.id = s.class_id JOIN teachers t ON t.id = c.teacher_id
-     WHERE (s.firebase_uid = ? OR s.email = ?) AND s.status = 'active' AND c.status = 'active' AND t.status = 'active'
+     WHERE (s.firebase_uid = ? OR s.email = ?) AND s.status = 'active' AND c.status = 'active' AND c.archived = 0 AND t.status = 'active'
      ORDER BY COALESCE(s.last_active_at, s.created_at) DESC`
   ).bind(firebase.localId, email).first<{ id: string; class_id: string; nickname: string; email: string }>();
 
@@ -44,7 +44,7 @@ export async function requireActor(request: Request): Promise<AuthActor | Respon
 
   return {
     firebase,
-    teacher: teacher ?? null,
+    teacher: teacher ? { ...teacher, schoolId: teacher.school_id ?? "" } : null,
     student: student ? { id: student.id, classId: student.class_id, nickname: student.nickname, email: student.email } : null,
   };
 }
@@ -54,6 +54,7 @@ export async function requireTeacher(request: Request) {
   if (actor instanceof Response) return actor;
   if (!actor.teacher) return jsonError("找不到教師帳號。", 403);
   if (actor.teacher.status !== "active") return jsonError("教師帳號尚未啟用。", 403);
+  if (actor.teacher.role === "teacher" && !actor.teacher.schoolId) return jsonError("教師帳號尚未指定任教學校，請聯絡超管。", 403);
   return { ...actor, teacher: actor.teacher };
 }
 

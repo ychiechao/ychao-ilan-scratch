@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   let classes: unknown[] = [];
   let adoptions: unknown[] = [];
   if (actor?.teacher?.status === "active") {
-    classes = (await db.prepare("SELECT id, name, code, status FROM classes WHERE teacher_id = ? AND status = 'active' ORDER BY created_at DESC").bind(actor.teacher.id).all()).results ?? [];
+    classes = (await db.prepare("SELECT id, name, code, status FROM classes WHERE teacher_id = ? AND status = 'active' AND archived = 0 ORDER BY created_at DESC").bind(actor.teacher.id).all()).results ?? [];
     adoptions = (await db.prepare(
       `SELECT cc.id, cc.class_id, cl.name AS class_name, cc.course_version_id, cc.status, cc.sort_order,
         cc.assignment_enabled,
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   const allowed = await db.prepare(
     `SELECT cv.id FROM course_versions cv JOIN courses c ON c.id = cv.course_id
      JOIN classes cl ON cl.id = ? WHERE cv.id = ? AND cv.status = 'published'
-       AND c.current_version_id = cv.id AND cl.teacher_id = ? AND cl.status = 'active'
+       AND c.current_version_id = cv.id AND cl.teacher_id = ? AND cl.status = 'active' AND cl.archived = 0
        AND (? = 'superadmin' OR NOT EXISTS (
          SELECT 1 FROM teacher_course_permissions tcp
          WHERE tcp.teacher_id = ? AND tcp.course_id = c.id AND tcp.allowed = 0
@@ -98,14 +98,14 @@ export async function PATCH(request: Request) {
   const db = await ensureDb();
   if (action === "toggle") {
     const result = await db.prepare(`UPDATE class_courses SET status = CASE status WHEN 'active' THEN 'disabled' ELSE 'active' END
-      WHERE id = ? AND class_id IN (SELECT id FROM classes WHERE teacher_id = ?)`).bind(adoptionId, actor.teacher.id).run();
+      WHERE id = ? AND class_id IN (SELECT id FROM classes WHERE teacher_id = ? AND status = 'active' AND archived = 0)`).bind(adoptionId, actor.teacher.id).run();
     if (!result.meta.changes) return jsonError("找不到班級課程。", 404);
     return Response.json({ ok: true });
   }
   if (action === "toggle_assignment") {
     const result = await db.prepare(
       `UPDATE class_courses SET assignment_enabled = CASE assignment_enabled WHEN 1 THEN 0 ELSE 1 END
-       WHERE id = ? AND class_id IN (SELECT id FROM classes WHERE teacher_id = ? AND status = 'active')`
+       WHERE id = ? AND class_id IN (SELECT id FROM classes WHERE teacher_id = ? AND status = 'active' AND archived = 0)`
     ).bind(adoptionId, actor.teacher.id).run();
     if (!result.meta.changes) return jsonError("找不到可設定作業的班級課程。", 404);
     return Response.json({ ok: true });
@@ -113,7 +113,7 @@ export async function PATCH(request: Request) {
   if (action === "upgrade") {
     const result = await db.prepare(`UPDATE class_courses SET course_version_id = (
         SELECT c.current_version_id FROM course_versions old JOIN courses c ON c.id = old.course_id WHERE old.id = class_courses.course_version_id
-      ) WHERE id = ? AND class_id IN (SELECT id FROM classes WHERE teacher_id = ?)`)
+      ) WHERE id = ? AND class_id IN (SELECT id FROM classes WHERE teacher_id = ? AND status = 'active' AND archived = 0)`)
       .bind(adoptionId, actor.teacher.id).run();
     if (!result.meta.changes) return jsonError("找不到可升級的班級課程。", 404);
     return Response.json({ ok: true });
@@ -123,7 +123,8 @@ export async function PATCH(request: Request) {
     if (!direction) return jsonError("排序方向不正確。");
     const current = await db.prepare(
       `SELECT cc.id, cc.class_id, cc.sort_order FROM class_courses cc
-       JOIN classes cl ON cl.id = cc.class_id WHERE cc.id = ? AND cl.teacher_id = ?`,
+       JOIN classes cl ON cl.id = cc.class_id
+       WHERE cc.id = ? AND cl.teacher_id = ? AND cl.status = 'active' AND cl.archived = 0`,
     ).bind(adoptionId, actor.teacher.id).first<{ id: string; class_id: string; sort_order: number }>();
     if (!current) return jsonError("找不到班級課程。", 404);
     const operator = direction === "up" ? "<" : ">";

@@ -26,6 +26,15 @@ type Teacher = {
   status?: string;
   mustChangePin?: boolean;
   must_change_pin?: number;
+  schoolId?: string;
+  schoolName?: string;
+  schools?: SchoolInfo[];
+};
+type SchoolInfo = {
+  id: string;
+  name: string;
+  division?: "E" | "J" | "unclassified";
+  enabled?: number;
 };
 type ClassInfo = {
   id: string;
@@ -39,6 +48,10 @@ type ClassInfo = {
   submission_label?: string;
   enrollmentEnabled?: boolean;
   enrollment_enabled?: number;
+  schoolId?: string;
+  school_id?: string;
+  school_name?: string;
+  archived?: boolean | number;
   status?: string;
   createdAt?: string;
 };
@@ -113,6 +126,15 @@ type AdminClass = ClassInfo & {
   student_count?: number;
 };
 
+type AdminSchool = SchoolInfo & {
+  domains_json: string;
+  teacher_count?: number;
+  class_count?: number;
+  student_count?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
 type AdminUser = {
   id: string;
   user_type: "teacher" | "student";
@@ -121,6 +143,10 @@ type AdminUser = {
   role: string;
   status: string;
   school_name?: string;
+  school_id?: string;
+  school_ids?: string;
+  school_source?: string;
+  school_verified?: number;
   last_login_at?: string;
   last_active_at?: string;
   created_at?: string;
@@ -166,6 +192,7 @@ type AdminDashboard = {
   students: AdminUser[];
   users: AdminUser[];
   classes: AdminClass[];
+  schools: AdminSchool[];
   courses: AdminCourse[];
   permissions: Array<{ teacher_id: string; course_id: string; allowed: number }>;
   activity: AdminActivity[];
@@ -173,7 +200,7 @@ type AdminDashboard = {
 };
 
 const emptyAdminDashboard: AdminDashboard = {
-  teachers: [], students: [], users: [], classes: [], courses: [], permissions: [], activity: [],
+  teachers: [], students: [], users: [], classes: [], schools: [], courses: [], permissions: [], activity: [],
   fileStorage: { configured: false },
 };
 
@@ -220,6 +247,10 @@ function submissionLabelOf(item?: ClassInfo | null) {
 
 function enrollmentEnabledOf(item?: ClassInfo | null) {
   return item?.enrollmentEnabled ?? Boolean(item?.enrollment_enabled ?? 1);
+}
+
+function classArchivedOf(item?: ClassInfo | null) {
+  return Boolean(item?.archived);
 }
 
 function projectUrlOf(item?: Submission | null) {
@@ -818,7 +849,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         await authorizedFetch("/api/classes", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: form.get("name"), courseVersionId: form.get("courseVersionId") }),
+          body: JSON.stringify({ name: form.get("name"), courseVersionId: form.get("courseVersionId"), schoolId: form.get("schoolId") }),
         })
       );
       const nextClasses = [data.class, ...classes];
@@ -942,7 +973,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
   async function removeStudent(student: Student) {
     if (!teacher || !selectedClassId) return;
-    if (!window.confirm(`確定剔除 ${seatOf(student)} 號 ${student.nickname}？繳交與徽章也會刪除。`)) return;
+    if (!window.confirm(`確定將 ${seatOf(student)} 號 ${student.nickname} 移出班級？學習與徽章紀錄會保留，之後仍可恢復。`)) return;
     setBusy(true);
     try {
       await readJson<{ ok: boolean }>(
@@ -953,9 +984,9 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         })
       );
       await refreshDashboard(selectedClassId);
-      show("success", "已剔除學生。");
+      show("success", "已將學生移出班級，學習紀錄仍保留。");
     } catch (error) {
-      show("error", error instanceof Error ? error.message : "無法剔除學生。");
+      show("error", error instanceof Error ? error.message : "無法移出學生。");
     } finally {
       setBusy(false);
     }
@@ -973,7 +1004,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
         })
       );
       await refreshDashboard(selectedClassId);
-      show("success", student.status === "disabled" ? "已啟用學生帳號。" : "已停用學生帳號，學生將無法登入。");
+      show("success", student.status !== "active" ? "已恢復學生帳號。" : "已停用學生帳號，學生將無法登入。");
     } catch (error) {
       show("error", error instanceof Error ? error.message : "無法更新學生狀態。");
     } finally {
@@ -1314,6 +1345,10 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                             </div>
                             <form onSubmit={createClass}>
                               <input name="name" placeholder="新增班級名稱" required />
+                              <select name="schoolId" defaultValue={teacher.schoolId ?? teacher.schools?.[0]?.id ?? ""} aria-label="班級學校" required>
+                                <option value="" disabled>選擇學校</option>
+                                {(teacher.schools ?? []).map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+                              </select>
                               <select name="courseVersionId" defaultValue="" aria-label="新班級課程">
                                 <option value="">建立後再選課程</option>
                                 {teacherCourses.map((course) => <option key={course.id} value={course.current_version_id}>{course.title}</option>)}
@@ -1334,7 +1369,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                             onToggle={toggleClassEnrollment}
                           />
 
-                          {dashboard.class?.status === "active" ? (
+                          {dashboard.class?.status === "active" && !classArchivedOf(dashboard.class) ? (
                             <>
                               <CourseAssignmentSettings
                                 courses={dashboard.courses}
@@ -1374,7 +1409,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                               更新名冊
                             </button>
                           </div>
-                          {dashboard.class?.status === "active" ? (
+                          {dashboard.class?.status === "active" && !classArchivedOf(dashboard.class) ? (
                             <TeacherRoster
                               students={dashboard.students}
                               busy={busy}
@@ -1738,13 +1773,16 @@ function isAutomaticChapter(chapterNo: number) {
 }
 
 function ClassApprovalPanel({ classInfo }: { classInfo?: ClassInfo | null }) {
+  const archived = classArchivedOf(classInfo);
   return (
     <div className="approval-panel approval-panel--class">
-      <span>{classInfo ? accountStatusLabel(classInfo.status) : "尚未選擇"}</span>
-      <h3>{classInfo ? "這個班級尚未啟用" : "尚未建立班級"}</h3>
+      <span>{classInfo ? (archived ? "已封存" : accountStatusLabel(classInfo.status)) : "尚未選擇"}</span>
+      <h3>{classInfo ? (archived ? "這個班級已封存" : "這個班級尚未啟用") : "尚未建立班級"}</h3>
       <p>
         {classInfo
-          ? "班級代碼已產生，超管啟用後，老師才能開放學生加入並管理名冊。"
+          ? archived
+            ? "封存班級保留學生、作業與進度紀錄，但不再接受加入或變更名冊。"
+            : "班級代碼已產生，超管啟用後，老師才能開放學生加入並管理名冊。"
           : "請先在班級管理新增班級。"}
       </p>
     </div>
@@ -1776,16 +1814,17 @@ function ClassEnrollmentManager({
       <div className="class-manager__list">
         {classes.length === 0 && <p>尚未建立班級。</p>}
         {classes.map((item) => {
-          const canManage = item.status === "active";
+          const archived = classArchivedOf(item);
+          const canManage = item.status === "active" && !archived;
           const accepting = enrollmentEnabledOf(item);
           return (
             <article key={item.id} className={item.id === selectedClassId ? "selected" : ""}>
               <button type="button" className="class-manager__select" onClick={() => onSelect(item.id)}>
-                <span>{accountStatusLabel(item.status)}</span>
+                <span>{archived ? "已封存" : accountStatusLabel(item.status)}{item.school_name ? ` · ${item.school_name}` : ""}</span>
                 <strong>{item.name}</strong>
                 <code>{item.code}</code>
               </button>
-              <label className="enrollment-toggle">
+              <label className="enrollment-toggle" aria-label={`${item.name}加入狀態`}>
                 <input
                   type="checkbox"
                   checked={canManage && accepting}
@@ -1793,8 +1832,8 @@ function ClassEnrollmentManager({
                   onChange={() => onToggle(item)}
                 />
                 <span>
-                  <b>{canManage ? (accepting ? "開放加入" : "停止加入") : accountStatusLabel(item.status)}</b>
-                  <small>{canManage ? (accepting ? "新學生可以使用班級代碼加入" : "現有學生與進度仍會保留") : "需由超管啟用班級"}</small>
+                  <b>{canManage ? (accepting ? "開放加入" : "停止加入") : archived ? "班級已封存" : accountStatusLabel(item.status)}</b>
+                  <small>{canManage ? (accepting ? "新學生可以使用班級代碼加入" : "現有學生與進度仍會保留") : archived ? "保留學生與學習紀錄" : "需由超管啟用班級"}</small>
                 </span>
               </label>
             </article>
@@ -1858,7 +1897,7 @@ function TeacherRoster({
   onToggleStatus: (student: Student) => void;
   onRemove: (student: Student) => void;
 }) {
-  const activeCount = students.filter((student) => student.status !== "disabled").length;
+  const activeCount = students.filter((student) => student.status === "active" || !student.status).length;
   return (
     <section className="roster-manager">
       <div className="roster-manager__head">
@@ -1877,21 +1916,21 @@ function TeacherRoster({
       <div className="roster-list">
         {students.length === 0 && <p>尚無學生，可由老師新增，或讓學生以班級代碼自行加入。</p>}
         {students.map((item) => (
-          <form key={item.id} className={`roster-row ${item.status === "disabled" ? "roster-row--disabled" : ""}`} onSubmit={(event) => onSave(event, item.id)}>
+          <form key={item.id} className={`roster-row ${item.status !== "active" && item.status ? "roster-row--disabled" : ""}`} onSubmit={(event) => onSave(event, item.id)}>
             <input name="seatNo" defaultValue={seatOf(item)} aria-label={`${item.nickname}座號`} required />
             <input name="nickname" defaultValue={item.nickname} aria-label="暱稱" required />
             <input name="email" type="email" defaultValue={item.email ?? ""} placeholder="學生 Email" aria-label="學生 Email" readOnly required />
             <label className="student-status-toggle">
               <input
                 type="checkbox"
-                checked={item.status !== "disabled"}
+                checked={item.status === "active" || !item.status}
                 disabled={busy}
                 onChange={() => onToggleStatus(item)}
               />
-              <span>{item.status === "disabled" ? "已停用" : "已啟用"}</span>
+              <span>{item.status === "removed" ? "已移除" : item.status === "disabled" ? "已停用" : "已啟用"}</span>
             </label>
             <button disabled={busy}>儲存</button>
-            <button type="button" className="danger" disabled={busy} onClick={() => onRemove(item)}>剔除</button>
+            <button type="button" className="danger" disabled={busy || item.status === "removed"} onClick={() => onRemove(item)}>移出班級</button>
           </form>
         ))}
       </div>
@@ -1910,15 +1949,20 @@ function AdminConsole({
   onRefresh: () => void;
   onAction: (payload: Record<string, unknown>, successMessage: string) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<"users" | "courses">("users");
+  const [tab, setTab] = useState<"users" | "schools" | "classes" | "courses" | "activity">("users");
   const [query, setQuery] = useState("");
   const [userKind, setUserKind] = useState<"all" | "teacher" | "student">("all");
+  const [schoolFilter, setSchoolFilter] = useState("all");
   const pendingTeachers = dashboard.teachers.filter((item) => item.role !== "superadmin" && item.status === "pending").length;
   const pendingClasses = dashboard.classes.filter((item) => item.status === "pending").length;
   const publishedCourses = dashboard.courses.filter((item) => item.status === "published");
+  const activeSchools = dashboard.schools.filter((item) => Boolean(item.enabled));
   const visibleUsers = dashboard.users.filter((item) => {
     const haystack = `${item.name} ${item.email ?? ""} ${item.school_name ?? ""} ${item.class_name ?? ""}`.toLowerCase();
-    return (userKind === "all" || item.user_type === userKind) && haystack.includes(query.trim().toLowerCase());
+    const schoolIds = new Set([item.school_id, ...(item.school_ids ?? "").split(",")].filter(Boolean));
+    return (userKind === "all" || item.user_type === userKind)
+      && (schoolFilter === "all" || schoolIds.has(schoolFilter))
+      && haystack.includes(query.trim().toLowerCase());
   });
   function prettyDate(value?: string) {
     if (!value) return "尚無紀錄";
@@ -1926,23 +1970,35 @@ function AdminConsole({
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-TW", { dateStyle: "short", timeStyle: "short" });
   }
   function activityLabel(action: string) {
-    return ({ login: "登入系統", register: "註冊帳號", join_class: "加入班級", question_attempt: "完成課程題目", chapter_attempt: "完成章節檢核", course_project_submitted: "繳交課程作品", user_profile: "調整使用者資料", course_permission: "調整課程權限", teacher_status: "調整教師狀態", class_status: "調整班級狀態" } as Record<string, string>)[action] ?? action;
+    return ({ login: "登入系統", register: "註冊帳號", join_class: "加入班級", question_attempt: "完成課程題目", chapter_attempt: "完成章節檢核", course_project_submitted: "繳交課程作品", user_profile: "調整使用者資料", course_permission: "調整課程權限", teacher_status: "調整教師狀態", class_status: "調整班級狀態", class_profile: "更新班級設定", class_create: "建立班級", school_upsert: "新增或更新學校", school_status: "調整學校狀態", class_enrollment: "調整班級加入", student_added: "新增班級成員", student_profile: "更新學生資料", student_status: "調整學生狀態", student_removed: "移除班級成員" } as Record<string, string>)[action] ?? action;
+  }
+  function domainsText(value: string) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.join(", ") : "";
+    } catch {
+      return "";
+    }
   }
   return (
     <div className="admin-console">
       <div className="dashboard-summary admin-summary">
         <div><span>全部使用者</span><strong>{dashboard.users.length}</strong></div>
         <div><span>待啟用帳號／班級</span><strong>{pendingTeachers + pendingClasses}</strong></div>
+        <div><span>啟用學校</span><strong>{activeSchools.length}</strong></div>
         <div><span>已發布課程</span><strong>{publishedCourses.length}</strong></div>
         <button className="ghost" disabled={busy} onClick={onRefresh}>更新資料</button>
       </div>
 
       <div className="admin-tabs" role="tablist" aria-label="後台管理區">
         <button className={tab === "users" ? "active" : "ghost"} onClick={() => setTab("users")}>使用者管理</button>
+        <button className={tab === "schools" ? "active" : "ghost"} onClick={() => setTab("schools")}>學校管理</button>
+        <button className={tab === "classes" ? "active" : "ghost"} onClick={() => setTab("classes")}>班級管理</button>
         <button className={tab === "courses" ? "active" : "ghost"} onClick={() => setTab("courses")}>課程管理</button>
+        <button className={tab === "activity" ? "active" : "ghost"} onClick={() => setTab("activity")}>使用紀錄</button>
       </div>
 
-      {tab === "users" ? <>
+      {tab === "users" &&
         <section className="admin-section">
           <div className="admin-section-heading">
             <div><p className="eyebrow">Accounts</p><h3>使用者管理</h3></div>
@@ -1950,6 +2006,10 @@ function AdminConsole({
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋姓名、Email、學校或班級" aria-label="搜尋使用者" />
               <select value={userKind} onChange={(event) => setUserKind(event.target.value as typeof userKind)} aria-label="使用者身分">
                 <option value="all">全部身分</option><option value="teacher">教師與超管</option><option value="student">學生</option>
+              </select>
+              <select value={schoolFilter} onChange={(event) => setSchoolFilter(event.target.value)} aria-label="篩選學校">
+                <option value="all">全部學校</option>
+                {dashboard.schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
               </select>
             </div>
           </div>
@@ -1977,11 +2037,18 @@ function AdminConsole({
                 <form className="admin-user-form" onSubmit={(event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
-                  void onAction({ action: "user_profile", userType: item.user_type, userId: item.id, schoolName: form.get("schoolName"), role: form.get("role"), status: form.get("status") }, "使用者資料已更新。");
+                  void onAction({ action: "user_profile", userType: item.user_type, userId: item.id, schoolId: form.get("schoolId"), schoolIds: form.getAll("schoolIds"), role: form.get("role"), status: form.get("status") }, "使用者資料已更新。");
                 }}>
-                  <label>學校<input name="schoolName" defaultValue={item.school_name ?? ""} placeholder="例如：宜蘭縣○○國小" /></label>
+                  {item.user_type === "teacher" ? <fieldset className="admin-school-checks">
+                    <legend>任教學校</legend>
+                    {dashboard.schools.map((school) => {
+                      const assigned = new Set((item.school_ids || item.school_id || "").split(",").filter(Boolean));
+                      return <label key={school.id}><input type="checkbox" name="schoolIds" value={school.id} defaultChecked={assigned.has(school.id)} disabled={!school.enabled && !assigned.has(school.id)} />{school.name}{school.enabled ? "" : "（停用）"}</label>;
+                    })}
+                    {dashboard.schools.length === 0 && <small>請先建立學校。</small>}
+                  </fieldset> : <label>學校<select name="schoolId" defaultValue={item.school_id ?? ""}><option value="">未指定</option>{dashboard.schools.map((school) => <option key={school.id} value={school.id} disabled={!school.enabled && school.id !== item.school_id}>{school.name}{school.enabled ? "" : "（停用）"}</option>)}</select></label>}
                   <label>身分<select name="role" defaultValue={item.role} disabled={item.user_type === "student"}><option value="student">學生</option><option value="teacher">教師</option><option value="superadmin">超級管理者</option></select></label>
-                  <label>帳號狀態<select name="status" defaultValue={item.status}><option value="pending">待啟用</option><option value="active">啟用</option><option value="disabled">停用</option></select></label>
+                  <label>帳號狀態<select name="status" defaultValue={item.status}><option value="pending">待啟用</option><option value="active">啟用</option><option value="disabled">停用</option>{item.user_type === "student" && <option value="removed">已移除</option>}</select></label>
                   <button disabled={busy}>儲存</button>
                 </form>
                 {item.user_type === "teacher" && item.role !== "superadmin" && publishedCourses.length > 0 && <details className="admin-permissions">
@@ -1995,41 +2062,49 @@ function AdminConsole({
             })}
             {visibleUsers.length === 0 && <p className="admin-empty">找不到符合條件的使用者。</p>}
           </div>
-      </section>
+        </section>}
 
-      <section className="admin-section">
-        <h3>班級啟用與代碼</h3>
-        <div className="admin-list">
-          {dashboard.classes.map((item) => (
-            <article key={item.id} className="admin-item admin-item--class">
-              <div>
-                <span>{accountStatusLabel(item.status)}</span>
-                <strong>{item.name}</strong>
-                <small>{item.teacher_name} · {item.teacher_email}</small>
-              </div>
-              <code>{item.code}</code>
-              <b>{item.student_count ?? 0} 位學生</b>
-              <button
-                disabled={busy}
-                onClick={() => onAction(
-                  { action: "class_status", classId: item.id, status: item.status === "active" ? "disabled" : "active" },
-                  item.status === "active" ? "已停用班級。" : "已啟用班級。"
-                )}
-              >
-                {item.status === "active" ? "停用" : "啟用"}
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="admin-section">
-        <h3>近期使用紀錄</h3>
-        <div className="admin-activity-list">
-          {dashboard.activity.slice(0, 20).map((item) => <div key={item.id}><span>{item.user_name || "未知使用者"}</span><strong>{activityLabel(item.action)}</strong><time>{prettyDate(item.created_at)}</time></div>)}
-          {dashboard.activity.length === 0 && <p>尚無使用紀錄。</p>}
-        </div>
-      </section>
-      </> : <section className="admin-section admin-course-manager">
+      {tab === "schools" && <section className="admin-section">
+        <div className="admin-section-heading"><div><p className="eyebrow">Schools</p><h3>學校管理</h3></div></div>
+        <form className="admin-school-form admin-school-form--new" onSubmit={(event) => {
+          event.preventDefault(); const form = new FormData(event.currentTarget);
+          void onAction({ action: "school_upsert", name: form.get("name"), domains: form.get("domains"), division: form.get("division"), enabled: true }, "學校已新增。");
+        }}>
+          <label>學校名稱<input name="name" placeholder="例如：宜蘭縣○○國小" required /></label>
+          <label>Email 網域<input name="domains" placeholder="tmail.ilc.edu.tw, smail.ilc.edu.tw" /></label>
+          <label>學制<select name="division" defaultValue="unclassified"><option value="E">國小</option><option value="J">國中</option><option value="unclassified">未分類</option></select></label>
+          <button disabled={busy}>新增學校</button>
+        </form>
+        <div className="admin-school-list">{dashboard.schools.map((school) => <form key={school.id} className="admin-school-card" onSubmit={(event) => {
+          event.preventDefault(); const form = new FormData(event.currentTarget);
+          void onAction({ action: "school_upsert", schoolId: school.id, name: form.get("name"), domains: form.get("domains"), division: form.get("division"), enabled: form.get("enabled") === "on" }, "學校資料已更新。");
+        }}>
+          <div className="admin-school-card__summary"><span>{school.enabled ? "使用中" : "已停用"}</span><strong>{school.name}</strong><small>{school.teacher_count ?? 0} 位教師 · {school.class_count ?? 0} 個班級 · {school.student_count ?? 0} 位學生</small></div>
+          <label>學校名稱<input name="name" defaultValue={school.name} required /></label>
+          <label>Email 網域<input name="domains" defaultValue={domainsText(school.domains_json)} /></label>
+          <label>學制<select name="division" defaultValue={school.division ?? "unclassified"}><option value="E">國小</option><option value="J">國中</option><option value="unclassified">未分類</option></select></label>
+          <label className="admin-inline-check"><input type="checkbox" name="enabled" defaultChecked={Boolean(school.enabled)} />可供選取</label>
+          <button disabled={busy}>儲存</button>
+        </form>)}</div>
+      </section>}
+
+      {tab === "classes" && <section className="admin-section">
+        <div className="admin-section-heading"><div><p className="eyebrow">Classes</p><h3>班級管理</h3></div></div>
+        <div className="admin-class-list">{dashboard.classes.map((item) => <form key={item.id} className={`admin-class-card ${classArchivedOf(item) ? "is-archived" : ""}`} onSubmit={(event) => {
+          event.preventDefault(); const form = new FormData(event.currentTarget);
+          void onAction({ action: "class_profile", classId: item.id, schoolId: form.get("schoolId"), status: form.get("status"), enrollmentEnabled: form.get("enrollmentEnabled") === "on", archived: form.get("archived") === "on" }, "班級設定已更新。");
+        }}>
+          <div><span>{classArchivedOf(item) ? "已封存" : accountStatusLabel(item.status)}</span><strong>{item.name}</strong><small>{item.teacher_name} · {item.teacher_email}</small></div>
+          <code>{item.code}</code><b>{item.student_count ?? 0} 位學生</b>
+          <label>學校<select name="schoolId" defaultValue={item.school_id ?? ""} required><option value="" disabled>選擇學校</option>{dashboard.schools.map((school) => <option key={school.id} value={school.id} disabled={!school.enabled && school.id !== item.school_id}>{school.name}{school.enabled ? "" : "（停用）"}</option>)}</select></label>
+          <label>審核狀態<select name="status" defaultValue={item.status}><option value="pending">待審核</option><option value="active">啟用</option><option value="disabled">停用</option></select></label>
+          <label className="admin-inline-check"><input type="checkbox" name="enrollmentEnabled" defaultChecked={enrollmentEnabledOf(item)} />開放加入</label>
+          <label className="admin-inline-check"><input type="checkbox" name="archived" defaultChecked={classArchivedOf(item)} />封存班級</label>
+          <button disabled={busy}>儲存</button>
+        </form>)}</div>
+      </section>}
+
+      {tab === "courses" && <section className="admin-section admin-course-manager">
         <div className="admin-section-heading">
           <div><p className="eyebrow">Course packages</p><h3>課程管理</h3></div>
           <div className="admin-course-actions"><a className="primary-link" href="/studio?source=admin">新增／匯入課程包</a><a className="text-link" href="/admin/courses">審核待發布課程</a></div>
@@ -2043,6 +2118,11 @@ function AdminConsole({
           </article>)}
           {dashboard.courses.length === 0 && <p className="admin-empty">尚未建立課程包。</p>}
         </div>
+      </section>}
+
+      {tab === "activity" && <section className="admin-section">
+        <div className="admin-section-heading"><div><p className="eyebrow">Audit log</p><h3>使用紀錄</h3></div></div>
+        <div className="admin-activity-list">{dashboard.activity.map((item) => <div key={item.id}><span>{item.user_name || "未知使用者"}</span><strong>{activityLabel(item.action)}</strong><time>{prettyDate(item.created_at)}</time></div>)}{dashboard.activity.length === 0 && <p>尚無使用紀錄。</p>}</div>
       </section>}
     </div>
   );
