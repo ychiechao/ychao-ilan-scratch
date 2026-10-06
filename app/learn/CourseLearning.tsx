@@ -236,31 +236,47 @@ export function CourseLearning() {
     ? knownChapter?.videoIds.map((id, index) => ({ id, title: knownChapter.videoTitles[index] }))
       ?? videosFromQuestions(selectedLesson.questions)
     : [];
+  const completedQuestions = courses.reduce((total, item) => total + Number(item.passed_count || 0), 0);
 
   return (
-    <main className="library-shell">
-      <header className="library-header">
-        <div>
-          <HomeBackButton>← 回首頁</HomeBackButton>
-          <p className="eyebrow">My Courses</p>
-          <h1>我的班級</h1>
-          <p>查看已加入的班級與課程，也可以使用班級代碼加入新班級。</p>
-        </div>
-        <div className="learning-header-actions">
-          <Link className="text-link" href="/?mode=account">我的帳號</Link>
-          <button type="button" onClick={() => setJoinOpen((current) => !current)} aria-expanded={joinOpen}>
-            {joinOpen ? "收起加入表單" : "加入班級"}
-          </button>
-          {accountEmail ? (
-            <span className="learning-account-chip" title={accountEmail}>已登入 {accountEmail}</span>
-          ) : (
-            <button onClick={login} disabled={!authReady || busy}>
-              {authReady ? "學生 Google 登入" : "確認登入狀態…"}
+    <main className="library-shell learning-page">
+      <header className="learning-page-header">
+        <div className="learning-topbar">
+          <div className="learning-topbar__brand">
+            <HomeBackButton>← 回首頁</HomeBackButton>
+            <div>
+              <span>學生學習中心</span>
+              <strong>宜蘭 Scratch</strong>
+            </div>
+          </div>
+          <div className="learning-header-actions">
+            <Link className="learning-nav-link" href="/?mode=account">我的帳號</Link>
+            <button className="learning-nav-button" type="button" onClick={() => setJoinOpen((current) => !current)} aria-expanded={joinOpen}>
+              {joinOpen ? "收起表單" : "加入班級"}
             </button>
-          )}
+            {accountEmail ? (
+              <span className="learning-account-chip" title={accountEmail}>已登入 {accountEmail}</span>
+            ) : (
+              <button className="learning-login-button" onClick={login} disabled={!authReady || busy}>
+                {authReady ? "Google 登入" : "確認登入狀態…"}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="learning-page-intro">
+          <div>
+            <p className="eyebrow">My Classes</p>
+            <h1>我的班級</h1>
+            <p>選擇班級開始學習，也可以使用老師提供的代碼加入新班級。</p>
+          </div>
+          <dl aria-label="學習摘要">
+            <div><dt>班級</dt><dd>{classes.length}</dd></div>
+            <div><dt>課程</dt><dd>{courses.length}</dd></div>
+            <div><dt>已完成</dt><dd>{completedQuestions}</dd></div>
+          </dl>
         </div>
       </header>
-      <div className="studio-message">{message}</div>
+      <div className="studio-message learning-status-message">{message}</div>
       {joinOpen && (
         <form className="student-class-join" onSubmit={joinClass}>
           <div>
@@ -281,9 +297,12 @@ export function CourseLearning() {
         </div>
         {classes.length > 0 ? (
           <div className="student-class-grid">
-            {classes.map((item) => (
-              <article key={item.membership_id}>
-                <div><span>{item.school_name || "宜蘭縣"}</span><strong>{item.class_name}</strong></div>
+            {classes.map((item) => {
+              const classCourses = courses.filter((courseItem) => courseItem.class_id === item.class_id);
+              const isSelected = classCourses.some((courseItem) => courseItem.adoption_id === selectedAdoptionId);
+              return (
+              <article className={isSelected ? "is-selected" : ""} key={item.membership_id}>
+                <div className="student-class-identity"><span>{item.school_name || "宜蘭縣"}</span><strong>{item.class_name}</strong></div>
                 <dl>
                   <div><dt>座號</dt><dd>{item.seat_no} 號</dd></div>
                   <div><dt>課程</dt><dd>{item.course_count} 門</dd></div>
@@ -293,20 +312,23 @@ export function CourseLearning() {
                   {item.status === "active" ? "已啟用" : "已停用"}
                 </small>
                 <div className="student-class-course-actions">
-                  {courses.filter((courseItem) => courseItem.class_id === item.class_id).map((courseItem) => (
-                    <button
-                      type="button"
-                      key={courseItem.adoption_id}
-                      disabled={item.status !== "active"}
-                      onClick={() => void open(courseItem)}
-                    >
-                      進入 {courseItem.title}
-                    </button>
+                  {classCourses.map((courseItem) => (
+                    <div key={courseItem.adoption_id}>
+                      <span>{courseItem.title}</span>
+                      <button
+                        type="button"
+                        disabled={item.status !== "active"}
+                        onClick={() => void open(courseItem)}
+                      >
+                        {courseItem.adoption_id === selectedAdoptionId ? "學習中" : "進入課程"}
+                      </button>
+                    </div>
                   ))}
                   {item.course_count === 0 && <span>老師尚未開放課程</span>}
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="student-class-empty">
