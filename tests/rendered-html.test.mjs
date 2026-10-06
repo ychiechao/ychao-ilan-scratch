@@ -55,6 +55,15 @@ test("server-renders the legacy course platform by mode", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
 
+test("deprecated student mode no longer renders the old student backend", async () => {
+  const response = await render("/?mode=student&chapter=1");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Scratch 公開課程庫/);
+  assert.doesNotMatch(html, /學生學習與檢核|id="student-entry"/);
+});
+
 test("server-renders the new course platform entry pages", async () => {
   const cases = [
     ["/studio", "Scratch 課程設計室", "/", "首頁"],
@@ -97,7 +106,7 @@ test("server-renders a standalone chapter page", async () => {
   assert.match(html, /youtube\.com\/embed\/NSIGbZ9j3zY/);
   assert.doesNotMatch(html, /embed\/videoseries/);
   assert.match(html, /href="\/chapters\/2"/);
-  assert.match(html, /href="\/\?mode=student(?:&amp;|&)chapter=1#student-entry"/);
+  assert.match(html, /href="\/learn"/);
 });
 
 test("renders the revised chapter 2 checklist", async () => {

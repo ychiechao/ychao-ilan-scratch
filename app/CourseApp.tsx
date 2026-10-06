@@ -1,14 +1,12 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { chapters, playlistEmbedUrl, playlistUrl } from "./course-data";
-import { analyzeScratchFile, type ScratchAnalysis, type ScratchTask } from "./scratch-analyzer";
 import { authorizedFetch, firebaseAuth, signInWithGoogle, signOutFirebase } from "./firebase-client";
 import { CourseLibrary } from "./library/CourseLibrary";
-import { ILC_SCRATCH_LABEL, isIlcScratchPlatform } from "./submission-links";
 
-export type AppMode = "library" | "student" | "account" | "teacher" | "admin" | "map" | "chapter";
+export type AppMode = "library" | "account" | "teacher" | "admin" | "map" | "chapter";
 
 type PortalRole = "superadmin" | "teacher" | "student" | "unknown";
 type PortalIdentity = {
@@ -237,14 +235,6 @@ function statusLabel(status?: string) {
   return "未開始";
 }
 
-function submissionUrlOf(item?: ClassInfo | null) {
-  return item?.submissionUrl ?? item?.submission_url ?? "";
-}
-
-function submissionLabelOf(item?: ClassInfo | null) {
-  return item?.submissionLabel ?? item?.submission_label ?? ILC_SCRATCH_LABEL;
-}
-
 function enrollmentEnabledOf(item?: ClassInfo | null) {
   return item?.enrollmentEnabled ?? Boolean(item?.enrollment_enabled ?? 1);
 }
@@ -286,7 +276,7 @@ function initialMode(): AppMode {
   if (typeof window === "undefined") return "library";
 
   const mode = new URLSearchParams(window.location.search).get("mode");
-  if (mode === "library" || mode === "student" || mode === "account" || mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
+  if (mode === "library" || mode === "account" || mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
   return "library";
 }
 
@@ -337,13 +327,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
   const [teacherCourses, setTeacherCourses] = useState<TeacherCourseOption[]>([]);
   const [dashboard, setDashboard] = useState<Dashboard>(emptyDashboard);
   const [teacherTab, setTeacherTab] = useState<"classes" | "students">("classes");
-  const [student, setStudent] = useState<Student | null>(() => readStored("scratch-student"));
-  const [studentClass, setStudentClass] = useState<ClassInfo | null>(() => readStored("scratch-student-class"));
-  const [studentAccessMode, setStudentAccessMode] = useState<"login" | "join">("login");
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [checked, setChecked] = useState<Record<number, string[]>>({});
-  const [scratchResults, setScratchResults] = useState<Record<string, ScratchAnalysis>>({});
   const [selectedChapter, setSelectedChapter] = useState(initialChapter);
   const [identity, setIdentity] = useState<PortalIdentity | null>(null);
   const [identityBusy, setIdentityBusy] = useState(false);
@@ -373,21 +356,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     if (teacher?.status !== "active") return;
     void authorizedFetch("/api/library").then((response) => readJson<{ courses: TeacherCourseOption[] }>(response)).then((data) => setTeacherCourses(data.courses)).catch(() => undefined);
   }, [teacher?.id, teacher?.status]);
-
-  const earnedCount = badges.length;
-  const progressPercent = Math.round((earnedCount / chapters.length) * 100);
-
-  const submissionMap = useMemo(() => {
-    const map = new Map<number, Submission>();
-    submissions.forEach((submission) => map.set(chapterNumber(submission), submission));
-    return map;
-  }, [submissions]);
-
-  const badgeMap = useMemo(() => {
-    const map = new Map<number, Badge>();
-    badges.forEach((badge) => map.set(chapterNumber(badge), badge));
-    return map;
-  }, [badges]);
 
   function show(type: NoticeType, text: string) {
     setNotice({ type, text });
@@ -485,18 +453,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     }
   }
 
-  async function refreshStudent(activeStudentId = student?.id) {
-    const studentId = activeStudentId ? `?studentId=${encodeURIComponent(activeStudentId)}` : "";
-    const data = await readJson<{
-      submissions: Submission[];
-      badges: Badge[];
-      class?: ClassInfo;
-    }>(await authorizedFetch(`/api/student/progress${studentId}`));
-    setSubmissions(data.submissions);
-    setBadges(data.badges);
-    if (data.class) setStudentClass(data.class);
-  }
-
   async function refreshDashboard(classId: string, teacherId = teacher?.id) {
     if (!teacherId) return;
     const data = await readJson<Dashboard>(
@@ -513,187 +469,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       await authorizedFetch("/api/admin/dashboard")
     );
     setAdminDashboard(data);
-  }
-
-  async function joinStudent(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      const google = await signInWithGoogle();
-      const data = await readJson<{ student: Student; class: ClassInfo }>(
-        await fetch("/api/student/join", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            classCode: form.get("classCode"),
-            seatNo: form.get("seatNo"),
-            nickname: form.get("nickname"),
-            idToken: google.idToken,
-          }),
-        })
-      );
-      setStudent(data.student);
-      setStudentClass(data.class);
-      setIdentity({ role: "student", name: data.student.nickname, email: data.student.email || google.email, status: "active" });
-      localStorage.setItem("scratch-student", JSON.stringify(data.student));
-      localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
-      await refreshStudent(data.student.id);
-      show("success", "已加入班級，可以開始上傳章節作品。");
-    } catch (error) {
-      show("error", error instanceof Error ? error.message : "加入班級失敗。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function loginStudent(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    try {
-      const google = await signInWithGoogle();
-      const data = await readJson<{ student: Student; class: ClassInfo }>(
-        await fetch("/api/student/login", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ idToken: google.idToken }),
-        })
-      );
-      setStudent(data.student);
-      setStudentClass(data.class);
-      setIdentity({ role: "student", name: data.student.nickname, email: data.student.email || google.email, status: "active" });
-      localStorage.setItem("scratch-student", JSON.stringify(data.student));
-      localStorage.setItem("scratch-student-class", JSON.stringify(data.class));
-      await refreshStudent(data.student.id);
-      show("success", "登入成功，已載入你的課程進度。");
-    } catch (error) {
-      show("error", error instanceof Error ? error.message : "學生登入失敗。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitChapter(event: FormEvent<HTMLFormElement>, chapterNo: number) {
-    event.preventDefault();
-    if (!student) return;
-    setBusy(true);
-    const form = new FormData(event.currentTarget);
-
-    try {
-      const currentChapter = chapters.find((chapter) => chapter.no === chapterNo);
-      const tasks = currentChapter?.submissionTasks ?? [];
-      const files = tasks.length > 0
-        ? tasks.map((task) => form.get(`file-${task.id}`))
-        : [form.get("file")];
-      const scratchFiles = files.map((file) => validateScratchFile(file));
-      await Promise.all(scratchFiles.map(async (file) => {
-        const signature = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-        if (signature[0] !== 0x50 || signature[1] !== 0x4b) {
-          throw new Error("這個檔案不像有效的 Scratch 作品，請從 Scratch 重新儲存。");
-        }
-      }));
-      let checklist = checked[chapterNo] ?? [];
-      if (tasks.length > 0) {
-        const results = await Promise.all(tasks.map((task, index) => (
-          analyzeScratchFile(scratchFiles[index], chapterNo, task.id as ScratchTask)
-        )));
-        checklist = results.flatMap((analysis) => analysis.passedIds);
-        setScratchResults((current) => ({
-          ...current,
-          ...Object.fromEntries(tasks.map((task, index) => [`${chapterNo}:${task.id}`, results[index]])),
-        }));
-        setChecked((current) => ({ ...current, [chapterNo]: checklist }));
-      } else if (isAutomaticChapter(chapterNo)) {
-        const analysis = await analyzeScratchFile(scratchFiles[0], chapterNo);
-        checklist = analysis.passedIds;
-        setScratchResults((current) => ({ ...current, [`${chapterNo}:default`]: analysis }));
-        setChecked((current) => ({ ...current, [chapterNo]: checklist }));
-      }
-      const data = await readJson<{
-        submissions: Submission[];
-        badges: Badge[];
-        submission: { status: string; score: number; missing: string[] };
-      }>(
-        await authorizedFetch("/api/submissions", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            studentId: student.id,
-            chapterNo,
-            checklist,
-            fileName: scratchFiles.map((file) => file.name).join(" / "),
-            fileSize: scratchFiles.reduce((sum, file) => sum + file.size, 0),
-          }),
-        })
-      );
-      setSubmissions(data.submissions);
-      setBadges(data.badges);
-      show(
-        data.submission.status === "passed" ? "success" : "info",
-        data.submission.status === "passed"
-          ? "檢核通過，已取得本章徽章。"
-          : data.submission.status === "ready_to_upload"
-            ? isIlcScratchPlatform(submissionUrlOf(studentClass))
-              ? "自我檢核通過，接著請貼上宜蘭 Scratch 作品連結。"
-              : "自我檢核通過，接著請到老師指定的收件頁面繳交。"
-            : data.submission.missing.length > 0
-              ? `還有 ${data.submission.missing.length} 項需要修正，請查看下方檢核結果。`
-              : "還有檢核項目需要修正。"
-      );
-      if (teacher && selectedClassId) refreshDashboard(selectedClassId);
-    } catch (error) {
-      show("error", error instanceof Error ? error.message : "上傳失敗。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function markExternalUploaded(submissionId: string) {
-    if (!student) return;
-    setBusy(true);
-    try {
-      const data = await readJson<{ submissions: Submission[]; badges: Badge[] }>(
-        await authorizedFetch("/api/submissions", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ action: "mark_uploaded", submissionId }),
-        })
-      );
-      setSubmissions(data.submissions);
-      setBadges(data.badges);
-      show("success", "已通知老師，收到確認後就會取得徽章。");
-    } catch (error) {
-      show("error", error instanceof Error ? error.message : "無法回報繳交狀態。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitProjectLink(event: FormEvent<HTMLFormElement>, submissionId: string) {
-    event.preventDefault();
-    if (!student) return;
-    setBusy(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      const data = await readJson<{ submissions: Submission[]; badges: Badge[] }>(
-        await authorizedFetch("/api/submissions", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            action: "submit_project",
-            submissionId,
-            projectUrls: form.getAll("projectUrl"),
-          }),
-        })
-      );
-      setSubmissions(data.submissions);
-      setBadges(data.badges);
-      show("success", "作品連結已交給老師，確認後就會取得徽章。");
-    } catch (error) {
-      show("error", error instanceof Error ? error.message : "無法繳交作品連結。");
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function toggleCourseAssignment(adoptionId: string) {
@@ -1012,15 +787,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     }
   }
 
-  function toggleCheck(chapterNo: number, checkId: string) {
-    setChecked((current) => {
-      const list = new Set(current[chapterNo] ?? []);
-      if (list.has(checkId)) list.delete(checkId);
-      else list.add(checkId);
-      return { ...current, [chapterNo]: [...list] };
-    });
-  }
-
   async function logoutPortal() {
     await fetch("/api/admin/logout", { method: "POST" }).catch(() => null);
     await signOutFirebase().catch(() => null);
@@ -1029,11 +795,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     localStorage.removeItem("scratch-teacher");
     localStorage.removeItem("scratch-classes");
     localStorage.removeItem("scratch-admin");
-    setStudent(null);
-    setStudentClass(null);
-    setSubmissions([]);
-    setBadges([]);
-    setScratchResults({});
     setTeacher(null);
     setClasses([]);
     setDashboard(emptyDashboard);
@@ -1042,10 +803,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     setIdentity(null);
     setMode("library");
     show("info", "已登出帳號。");
-  }
-
-  function logoutStudent() {
-    void logoutPortal();
   }
 
   function logoutTeacher() {
@@ -1113,7 +870,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
             ) : (
               <>
                 <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>公開課程庫</button>
-                <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>加入班級</button>
+                <button onClick={() => window.location.assign("/learn")}>加入班級</button>
               </>
             )}
           </div>
@@ -1124,12 +881,12 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
             <small>章節任務</small>
           </div>
           <div>
-            <span>{student ? earnedCount : "D1"}</span>
-            <small>{student ? "已取得徽章" : "進度資料"}</small>
+            <span>D1</span>
+            <small>進度資料</small>
           </div>
           <div>
-            <span>{student ? `${progressPercent}%` : "ILC"}</span>
-            <small>{student ? "完成率" : "作品繳交"}</small>
+            <span>ILC</span>
+            <small>作品繳交</small>
           </div>
         </div>
       </section>
@@ -1146,19 +903,18 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
               </a>
             </div>
             {chapters.map((chapter) => {
-              const earned = badgeMap.has(chapter.no);
               return (
                 <button
                   key={chapter.no}
-                  className={`chapter-link ${selectedChapter === chapter.no ? "selected" : ""} ${earned ? "earned" : ""}`}
+                  className={`chapter-link ${selectedChapter === chapter.no ? "selected" : ""}`}
                   onClick={() => {
                     setSelectedChapter(chapter.no);
-                    if (mode !== "map") setMode(student ? "student" : "chapter");
+                    if (mode !== "map") setMode("chapter");
                   }}
                 >
                   <span>{String(chapter.no).padStart(2, "0")}</span>
                   <strong>{chapter.title}</strong>
-                  <small>{earned ? "已得徽章" : chapter.range}</small>
+                  <small>{chapter.range}</small>
                 </button>
               );
             })}
@@ -1198,109 +954,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
                   <button type="button" className="ghost" onClick={() => void logoutPortal()}>登出帳號</button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {mode === "student" && (
-            <div className="surface" id="student-entry">
-              <div className="section-title">
-                <div>
-                  <p className="eyebrow">Student</p>
-                  <h2>學生學習與檢核</h2>
-                </div>
-                {student && (
-                  <button className="ghost" onClick={logoutStudent}>
-                    更換學生
-                  </button>
-                )}
-              </div>
-
-              {!student ? (
-                <div className="student-access">
-                  <div className="student-access__tabs" aria-label="學生登入方式">
-                    <button
-                      type="button"
-                      className={studentAccessMode === "login" ? "active" : ""}
-                      aria-pressed={studentAccessMode === "login"}
-                      onClick={() => setStudentAccessMode("login")}
-                    >
-                      已加入學生登入
-                    </button>
-                    <button
-                      type="button"
-                      className={studentAccessMode === "join" ? "active" : ""}
-                      aria-pressed={studentAccessMode === "join"}
-                      onClick={() => setStudentAccessMode("join")}
-                    >
-                      第一次加入班級
-                    </button>
-                  </div>
-
-                  {studentAccessMode === "login" ? (
-                    <form className="form-grid student-login-form" onSubmit={loginStudent}>
-                      <button disabled={busy}>使用 Google 登入課程</button>
-                    </form>
-                  ) : (
-                    <form className="form-grid student-join-form" onSubmit={joinStudent}>
-                      <label>
-                        班級代碼
-                        <input name="classCode" placeholder="YL-ABCDE" autoComplete="off" required />
-                      </label>
-                      <label>
-                        座號
-                        <input name="seatNo" placeholder="例如 08" autoComplete="off" required />
-                      </label>
-                      <label>
-                        暱稱
-                        <input name="nickname" placeholder="例如 小宜" autoComplete="nickname" required />
-                      </label>
-                      <button disabled={busy}>使用 Google 帳號加入班級</button>
-                    </form>
-                  )}
-                  <p className="student-access__note">
-                    登入帳號由 Firebase Authentication 保護，Email 會由 Google 帳號自動帶入。
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="student-strip">
-                    <div>
-                      <span>{studentClass?.name ?? "Scratch 班級"}</span>
-                      <strong>
-                        {seatOf(student)} 號 {student.nickname}
-                      </strong>
-                    </div>
-                    <div className="progress">
-                      <span style={{ width: `${progressPercent}%` }} />
-                    </div>
-                    <b>{earnedCount}/12 徽章</b>
-                  </div>
-
-                  <ChapterSubmit
-                    chapter={selected}
-                    submission={submissionMap.get(selected.no)}
-                    earned={badgeMap.has(selected.no)}
-                    checked={checked[selected.no] ?? []}
-                    analyses={scratchResults}
-                    busy={busy}
-                    submissionUrl={submissionUrlOf(studentClass)}
-                    submissionLabel={submissionLabelOf(studentClass)}
-                    onToggle={toggleCheck}
-                    onSubmit={submitChapter}
-                    onMarkUploaded={markExternalUploaded}
-                    onSubmitProject={submitProjectLink}
-                  />
-
-                  <div className="badge-wall">
-                    {chapters.map((chapter) => (
-                      <div key={chapter.no} className={`badge ${badgeMap.has(chapter.no) ? "badge--on" : ""}`}>
-                        <span>{chapter.no}</span>
-                        <strong>{chapter.badge}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
             </div>
           )}
 
@@ -1576,7 +1229,7 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
               <div className="chapter-preview__actions">
                 <a href={`/chapters/${selected.no}`}>閱讀完整章節頁</a>
-                <button onClick={() => setMode("student")}>學生登入與作品檢核</button>
+                <a href="/learn">前往我的班級檢核</a>
               </div>
             </article>
           )}
@@ -1584,225 +1237,6 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
       </section>
     </main>
   );
-}
-
-function ChapterSubmit({
-  chapter,
-  submission,
-  earned,
-  checked,
-  analyses,
-  busy,
-  submissionUrl,
-  submissionLabel,
-  onToggle,
-  onSubmit,
-  onMarkUploaded,
-  onSubmitProject,
-}: {
-  chapter: (typeof chapters)[number];
-  submission?: Submission;
-  earned: boolean;
-  checked: string[];
-  analyses: Record<string, ScratchAnalysis>;
-  busy: boolean;
-  submissionUrl: string;
-  submissionLabel: string;
-  onToggle: (chapterNo: number, checkId: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>, chapterNo: number) => void;
-  onMarkUploaded: (submissionId: string) => void;
-  onSubmitProject: (event: FormEvent<HTMLFormElement>, submissionId: string) => void;
-}) {
-  const usesIlcScratch = isIlcScratchPlatform(submissionUrl);
-  const submittedProjectUrls = projectUrlsOf(submission);
-
-  return (
-    <article className={`chapter-panel chapter-panel--${chapter.color}`}>
-      <div className="chapter-panel__head">
-        <div>
-          <span>{chapter.range}</span>
-          <h3>{chapter.title}</h3>
-          <p>{chapter.objective}</p>
-        </div>
-        <div className={`status-pill ${earned ? "status-pill--earned" : ""}`}>
-          {earned ? chapter.badge : statusLabel(submission?.status)}
-        </div>
-      </div>
-
-      <div className="chapter-resources">
-        <div className="video-list">
-          {chapter.videoTitles.map((title) => (
-            <span key={title}>{title}</span>
-          ))}
-        </div>
-        <div className="chapter-tools">
-          <a href={`/chapters/${chapter.no}`}>閱讀本章教材頁</a>
-        </div>
-      </div>
-
-      <form className="submit-box" onSubmit={(event) => onSubmit(event, chapter.no)}>
-        {chapter.submissionTasks ? (
-          <div className="submission-tasks">
-            {chapter.submissionTasks.map((task) => {
-              const taskChecks = chapter.checks.filter((check) => task.checkIds.includes(check.id));
-              const analysis = analyses[`${chapter.no}:${task.id}`];
-              return (
-                <section className="submission-task" key={task.id}>
-                  <div className="submission-task__head">
-                    <div>
-                      <h4>{task.title}</h4>
-                      <strong>{task.videoTitle}</strong>
-                    </div>
-                    <span>{analysis ? (analysis.passedIds.length === task.checkIds.length ? "檢核通過" : "需要修正") : "尚未檢核"}</span>
-                  </div>
-                  <p>{task.description}</p>
-                  <AutomaticCheckList checks={taskChecks} analysis={analysis} />
-                  <label className="file-field">
-                    選擇這份 Scratch 作品
-                    <input name={`file-${task.id}`} type="file" accept=".sb3" required />
-                  </label>
-                </section>
-              );
-            })}
-          </div>
-        ) : isAutomaticChapter(chapter.no) ? (
-          <>
-            <AutomaticCheckList checks={chapter.checks} analysis={analyses[`${chapter.no}:default`]} />
-            <label className="file-field">
-              選擇 Scratch 檔案進行檢核
-              <input name="file" type="file" accept=".sb3" required />
-              <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
-            </label>
-          </>
-        ) : (
-          <div className="check-list">
-            {chapter.checks.map((item) => (
-              <label key={item.id} className={checked.includes(item.id) ? "checked" : ""}>
-                <input
-                  type="checkbox"
-                  checked={checked.includes(item.id)}
-                  onChange={() => onToggle(chapter.no, item.id)}
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
-          </div>
-        )}
-        {!isAutomaticChapter(chapter.no) && !chapter.submissionTasks && (
-          <label className="file-field">
-            選擇 Scratch 檔案進行檢核
-            <input name="file" type="file" accept=".sb3" required />
-            <small>檔案只在這台裝置上檢查，不會上傳到本網站。</small>
-          </label>
-        )}
-        {chapter.submissionTasks && <small className="local-check-note">兩份檔案只在這台裝置上檢查，不會上傳到本網站。</small>}
-        <button disabled={busy}>{chapter.submissionTasks ? "檢核兩份作品" : isAutomaticChapter(chapter.no) ? "開始自動檢核" : "送出檢核"}</button>
-      </form>
-
-      {submission && submissionUrl && usesIlcScratch && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
-        <form className="external-submit project-link-submit" onSubmit={(event) => onSubmitProject(event, submission.id)}>
-          <div>
-            <span>第二步</span>
-            <strong>貼上宜蘭 Scratch 作品連結</strong>
-            <p>先在宜蘭 Scratch 儲存並分享作品，再複製專案頁網址。</p>
-          </div>
-          <div className="project-link-submit__fields">
-            {(chapter.submissionTasks ?? [{ id: "default", title: "本章作品" }]).map((task, index) => (
-              <label key={task.id}>
-                {chapter.submissionTasks ? `${index + 1}. ${task.title}` : "作品網址"}
-                <input
-                  name="projectUrl"
-                  type="url"
-                  required
-                  placeholder="https://s3.ilc.edu.tw/projects/356121701/"
-                />
-              </label>
-            ))}
-          </div>
-          <div className="project-link-submit__actions">
-            <a href={submissionUrl} target="_blank" rel="noreferrer">開啟宜蘭 Scratch</a>
-            <button disabled={busy}>繳交作品連結</button>
-          </div>
-        </form>
-      )}
-
-      {submission && submissionUrl && !usesIlcScratch && (submission.status === "ready_to_upload" || submission.status === "resubmit") && (
-        <div className="external-submit">
-          <div>
-            <span>第二步</span>
-            <strong>{chapter.submissionTasks ? "將兩份原始作品繳交給老師" : "將原始作品繳交給老師"}</strong>
-            <p>完成外部繳交後，回到這裡通知老師。</p>
-          </div>
-          <a href={submissionUrl} target="_blank" rel="noreferrer">{submissionLabel}</a>
-          <button type="button" disabled={busy} onClick={() => onMarkUploaded(submission.id)}>
-            我已完成上傳
-          </button>
-        </div>
-      )}
-
-      {submission?.status === "uploaded" && (
-        <div className="external-submit external-submit--waiting">
-          <div>
-            <span>已回報</span>
-            <strong>等待老師確認作品</strong>
-            <p>老師確認後，本章徽章會自動點亮。</p>
-          </div>
-          {submittedProjectUrls.map((url, index) => (
-            <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer">
-              查看已繳交作品{submittedProjectUrls.length > 1 ? ` ${index + 1}` : ""}
-            </a>
-          ))}
-        </div>
-      )}
-
-      {submission && (
-        <div className="latest">
-          <span>最近檢核</span>
-          <strong>{submission.file_name ?? submission.fileName}</strong>
-          <b>{statusLabel(submission.status)}</b>
-        </div>
-      )}
-    </article>
-  );
-}
-
-function AutomaticCheckList({
-  checks,
-  analysis,
-}: {
-  checks: { id: string; label: string }[];
-  analysis?: ScratchAnalysis;
-}) {
-  return (
-    <div className="check-list check-list--automatic" aria-live="polite">
-      {checks.map((item) => {
-        const check = analysis?.checks.find((candidate) => candidate.id === item.id);
-        return (
-          <div key={item.id} className={check?.passed ? "checked" : check ? "needs-fix" : ""}>
-            <span className="check-result">{check ? (check.passed ? "通過" : "待修正") : "等待檢核"}</span>
-            <span>
-              <strong>{item.label}</strong>
-              {check && <small>{check.detail}</small>}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function validateScratchFile(value: FormDataEntryValue | null) {
-  if (!(value instanceof File) || !value.name.toLowerCase().endsWith(".sb3")) {
-    throw new Error("請選擇 Scratch .sb3 檔案。");
-  }
-  if (value.size <= 0 || value.size > 20 * 1024 * 1024) {
-    throw new Error("每個檔案需小於 20MB。");
-  }
-  return value;
-}
-
-function isAutomaticChapter(chapterNo: number) {
-  return chapterNo >= 1 && chapterNo <= 11 && chapterNo !== 3 && chapterNo !== 10;
 }
 
 function ClassApprovalPanel({ classInfo }: { classInfo?: ClassInfo | null }) {

@@ -76,7 +76,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
 
   const previous = chapters.find((item) => item.no === chapter.no - 1);
   const next = chapters.find((item) => item.no === chapter.no + 1);
-  const studentCheckUrl = `/?mode=student&chapter=${chapter.no}#student-entry`;
+  const studentCheckUrl = "/learn";
 
   return (
     <main className="lesson-page">
