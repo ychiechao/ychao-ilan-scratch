@@ -59,7 +59,7 @@ test("server-renders the new course platform entry pages", async () => {
   const cases = [
     ["/studio", "Scratch 課程設計室", "/", "首頁"],
     ["/library", "Scratch 公開課程庫", null, null],
-    ["/learn", "我的課程", "/", "首頁"],
+    ["/learn", "我的班級", "/", "首頁"],
     ["/admin/courses", "課程包審核與發布", "/?mode=admin", "超管後台"],
     ["/admin/storage", "Cloudflare 檔案儲存", "/?mode=admin", "超管後台"],
   ];

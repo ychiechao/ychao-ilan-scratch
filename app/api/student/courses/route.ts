@@ -10,6 +10,19 @@ export async function GET(request: Request) {
   const courseId = cleanText(url.searchParams.get("id"), 100);
   const adoptionId = cleanText(url.searchParams.get("adoptionId"), 100);
   const db = await ensureDb();
+  const memberships = await db.prepare(
+    `SELECT s.id AS membership_id, s.class_id, s.seat_no, s.nickname, s.status,
+      cl.name AS class_name, cl.code AS class_code, school.name AS school_name,
+      (SELECT COUNT(*) FROM class_courses cc WHERE cc.class_id = cl.id AND cc.status = 'active') AS course_count,
+      (SELECT COUNT(*) FROM question_results qr WHERE qr.student_id = s.id AND qr.status = 'passed') AS passed_count
+     FROM students s
+     JOIN classes cl ON cl.id = s.class_id
+     JOIN teachers class_teacher ON class_teacher.id = cl.teacher_id
+     LEFT JOIN schools school ON school.id = cl.school_id
+     WHERE (s.firebase_uid = ? OR s.email = ?)
+       AND cl.archived = 0 AND class_teacher.status = 'active'
+     ORDER BY cl.name, CAST(s.seat_no AS INTEGER), s.seat_no`
+  ).bind(actor.firebase.localId, actor.firebase.email.toLowerCase()).all<Record<string, unknown>>();
   const adoptions = await db.prepare(
     `SELECT cc.id AS adoption_id, s.id AS membership_id, s.class_id, cl.name AS class_name,
       cc.assignment_enabled,
@@ -32,7 +45,10 @@ export async function GET(request: Request) {
        AND cl.status = 'active' AND cl.archived = 0 AND class_teacher.status = 'active' AND cc.status = 'active'
      ORDER BY cl.name, cc.sort_order, cc.created_at`
   ).bind(actor.firebase.localId, actor.firebase.email.toLowerCase()).all<Record<string, unknown>>();
-  if (!courseId) return Response.json({ courses: adoptions.results ?? [] });
+  if (!courseId) return Response.json({
+    courses: adoptions.results ?? [],
+    classes: memberships.results ?? [],
+  });
   const adoption = (adoptions.results ?? []).find((item) => (
     item.course_id === courseId && (!adoptionId || item.adoption_id === adoptionId)
   ));

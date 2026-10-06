@@ -2509,11 +2509,70 @@ td:first-child span {
 .order-actions { display: flex; gap: 6px; }
 .learning-layout { align-items: start; display: grid; gap: 18px; grid-template-columns: 260px minmax(0, 1fr); margin: auto; max-width: 1200px; }
 .learning-layout > aside { display: grid; gap: 8px; }
+.learning-layout > aside h2 { font-size: 1rem; margin: 0 0 4px; }
 .learning-layout > aside button { display: grid; gap: 4px; text-align: left; }
 .learning-layout > aside button.active { background: var(--green); color: white; }
 .learning-layout > aside small { font-size: .75rem; opacity: .72; }
 .learning-layout > aside span { font-size: .78rem; opacity: .75; }
 .learning-header-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.student-class-join,
+.student-class-summary { margin: 0 auto 18px; max-width: 1200px; }
+.student-class-join {
+  align-items: end;
+  background: #edf6f1;
+  border: 1px solid #a8cdb7;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1.25fr) repeat(3, minmax(130px, .7fr)) auto;
+  padding: 18px;
+}
+.student-class-join > div { align-self: center; }
+.student-class-join h2,
+.student-class-join p { margin: 0; }
+.student-class-join > div > p:last-child { color: var(--muted); line-height: 1.55; margin-top: 5px; }
+.student-class-join label { display: grid; font-size: .84rem; font-weight: 900; gap: 6px; }
+.student-class-join input { min-width: 0; }
+.student-class-join button { min-height: 44px; }
+.student-class-summary {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+.student-class-summary__heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 14px; }
+.student-class-summary__heading h2 { font-size: 1.25rem; margin: 3px 0 0; }
+.student-class-summary__heading > span { background: #e8f3ed; border-radius: 99px; color: #176348; font-size: .82rem; font-weight: 900; padding: 6px 10px; }
+.student-class-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.student-class-grid article { border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 12px; padding: 14px; position: relative; }
+.student-class-grid article > div:first-child { display: grid; gap: 3px; padding-right: 64px; }
+.student-class-grid article > div:first-child span { color: var(--muted); font-size: .78rem; }
+.student-class-grid article > div:first-child strong { font-size: 1rem; }
+.student-class-grid dl { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.student-class-grid dl > div { border-left: 2px solid #dfe9e2; padding-left: 8px; }
+.student-class-grid dt { color: var(--muted); font-size: .72rem; }
+.student-class-grid dd { font-size: .86rem; font-weight: 900; margin: 3px 0 0; }
+.student-class-grid article > small { border-radius: 99px; font-size: .72rem; font-weight: 900; padding: 5px 8px; position: absolute; right: 12px; top: 12px; }
+.student-class-grid .is-active { background: #e3f5eb; color: #176348; }
+.student-class-grid .is-disabled { background: #f4e8e5; color: #9c321e; }
+.student-class-empty { border: 1px dashed #b8c4bc; border-radius: 8px; padding: 22px; text-align: center; }
+.student-class-empty p,
+.learning-empty-note { color: var(--muted); margin: 5px 0 0; }
+.student-account { margin: 0 auto; max-width: 920px; }
+.student-account__card { align-items: center; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 18px; grid-template-columns: auto minmax(180px, .8fr) minmax(320px, 1.2fr); padding: 22px; }
+.student-account__avatar { align-items: center; background: var(--ink); border-radius: 50%; color: white; display: flex; font-size: 1.6rem; font-weight: 900; height: 64px; justify-content: center; width: 64px; }
+.student-account__identity { min-width: 0; }
+.student-account__identity span { color: var(--green); font-size: .78rem; font-weight: 900; }
+.student-account__identity h3 { margin: 4px 0; }
+.student-account__identity p { color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+.student-account__card dl { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.student-account__card dl > div { border-left: 2px solid #dfe9e2; padding-left: 10px; }
+.student-account__card dt { color: var(--muted); font-size: .75rem; }
+.student-account__card dd { font-weight: 900; margin: 4px 0 0; }
+.student-account__actions { align-items: center; background: #f3f6f2; border-radius: 8px; display: flex; gap: 18px; justify-content: space-between; margin-top: 14px; padding: 16px 18px; }
+.student-account__actions p { color: var(--muted); margin: 0; }
+.student-account__actions > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.student-account__actions button { min-height: 40px; white-space: nowrap; }
 .learning-layout > section,
 .learning-lesson { display: grid; gap: 14px; }
 .learning-question { align-items: center; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) auto; padding: 14px; }
@@ -2549,6 +2608,11 @@ td:first-child span {
   .learning-layout,
   .learning-question,
   .course-project-submit { grid-template-columns: 1fr; }
+  .student-class-join,
+  .student-account__card { grid-template-columns: 1fr; }
+  .student-class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .student-account__card dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .student-account__actions { align-items: stretch; flex-direction: column; }
   .learning-question > div:last-child { justify-items: stretch; }
   .drive-status-card,
   .drive-setup-grid { grid-template-columns: 1fr; }
@@ -2572,4 +2636,8 @@ td:first-child span {
 @media (max-width: 640px) {
   .course-assignment-list label { grid-template-columns: minmax(0, 1fr) auto; }
   .course-assignment-list b { grid-column: 1 / -1; text-align: left; }
+  .student-class-grid,
+  .student-account__card dl { grid-template-columns: 1fr; }
+  .student-account__actions > div,
+  .student-account__actions button { width: 100%; }
 }

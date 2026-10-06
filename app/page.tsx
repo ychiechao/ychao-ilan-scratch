@@ -10,7 +10,7 @@ type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const modes = new Set<AppMode>(["library", "student", "teacher", "admin", "map", "chapter"]);
+const modes = new Set<AppMode>(["library", "student", "account", "teacher", "admin", "map", "chapter"]);
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;

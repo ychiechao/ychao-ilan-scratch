@@ -24,6 +24,19 @@ type CourseItem = {
   project_url?: string;
 };
 
+type StudentClassItem = {
+  membership_id: string;
+  class_id: string;
+  class_name: string;
+  class_code: string;
+  seat_no: string;
+  nickname: string;
+  status: string;
+  school_name?: string;
+  course_count: number;
+  passed_count: number;
+};
+
 type CourseDetail = {
   id: string;
   title: string;
@@ -53,6 +66,7 @@ async function json<T>(response: Response): Promise<T> {
 
 export function CourseLearning() {
   const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [classes, setClasses] = useState<StudentClassItem[]>([]);
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [membershipId, setMembershipId] = useState("");
@@ -63,12 +77,13 @@ export function CourseLearning() {
   const [savedProjectUrl, setSavedProjectUrl] = useState("");
   const [message, setMessage] = useState("請使用已加入班級的學生 Google 帳號登入。");
   const [busy, setBusy] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
 
   async function load() {
-    const data = await json<{ courses: CourseItem[] }>(await authorizedFetch("/api/student/courses"));
+    const data = await json<{ courses: CourseItem[]; classes: StudentClassItem[] }>(await authorizedFetch("/api/student/courses"));
     setCourses(data.courses);
-    const classCount = new Set(data.courses.map((item) => item.class_id)).size;
-    setMessage(`目前有 ${classCount} 個班級，共開放 ${data.courses.length} 門課程。`);
+    setClasses(data.classes);
+    setMessage(`目前已加入 ${data.classes.length} 個班級，共開放 ${data.courses.length} 門課程。`);
   }
 
   useEffect(() => onAuthStateChanged(firebaseAuth, (user) => {
@@ -87,6 +102,34 @@ export function CourseLearning() {
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "登入失敗。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function joinClass(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    try {
+      const google = await signInWithGoogle();
+      await json(await fetch("/api/student/join", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          classCode: form.get("classCode"),
+          seatNo: form.get("seatNo"),
+          nickname: form.get("nickname"),
+          idToken: google.idToken,
+        }),
+      }));
+      formElement.reset();
+      setJoinOpen(false);
+      await load();
+      setMessage("已成功加入班級。新班級已顯示在下方。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "加入班級失敗。");
     } finally {
       setBusy(false);
     }
@@ -172,17 +215,62 @@ export function CourseLearning() {
         <div>
           <HomeBackButton>← 回首頁</HomeBackButton>
           <p className="eyebrow">My Courses</p>
-          <h1>我的課程</h1>
-          <p>同一個 Google 帳號可加入多個班級，各班進度分開保存。</p>
+          <h1>我的班級</h1>
+          <p>查看已加入的班級與課程，也可以使用班級代碼加入新班級。</p>
         </div>
         <div className="learning-header-actions">
-          <Link className="text-link" href="/?mode=student#student-entry">加入其他班級</Link>
+          <Link className="text-link" href="/?mode=account">我的帳號</Link>
+          <button type="button" onClick={() => setJoinOpen((current) => !current)} aria-expanded={joinOpen}>
+            {joinOpen ? "收起加入表單" : "加入班級"}
+          </button>
           <button onClick={login} disabled={busy}>學生 Google 登入</button>
         </div>
       </header>
       <div className="studio-message">{message}</div>
+      {joinOpen && (
+        <form className="student-class-join" onSubmit={joinClass}>
+          <div>
+            <p className="eyebrow">Join Class</p>
+            <h2>加入班級</h2>
+            <p>向老師取得班級代碼，使用目前的 Google 帳號加入。</p>
+          </div>
+          <label>班級代碼<input name="classCode" placeholder="YL-ABCDE" autoComplete="off" required /></label>
+          <label>座號<input name="seatNo" placeholder="例如 08" autoComplete="off" required /></label>
+          <label>暱稱<input name="nickname" placeholder="例如 小宜" autoComplete="nickname" required /></label>
+          <button disabled={busy}>確認加入</button>
+        </form>
+      )}
+      <section className="student-class-summary" aria-label="已加入班級">
+        <div className="student-class-summary__heading">
+          <div><p className="eyebrow">Classes</p><h2>已加入班級</h2></div>
+          <span>{classes.length} 個班級</span>
+        </div>
+        {classes.length > 0 ? (
+          <div className="student-class-grid">
+            {classes.map((item) => (
+              <article key={item.membership_id}>
+                <div><span>{item.school_name || "宜蘭縣"}</span><strong>{item.class_name}</strong></div>
+                <dl>
+                  <div><dt>座號</dt><dd>{item.seat_no} 號</dd></div>
+                  <div><dt>課程</dt><dd>{item.course_count} 門</dd></div>
+                  <div><dt>已完成</dt><dd>{item.passed_count} 題</dd></div>
+                </dl>
+                <small className={item.status === "active" ? "is-active" : "is-disabled"}>
+                  {item.status === "active" ? "已啟用" : "已停用"}
+                </small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="student-class-empty">
+            <strong>尚未加入班級</strong>
+            <p>請點選「加入班級」並輸入老師提供的班級代碼。</p>
+          </div>
+        )}
+      </section>
       <div className="learning-layout">
         <aside>
+          <h2>班級課程</h2>
           {courses.map((item) => (
             <button
               key={item.adoption_id}
@@ -195,6 +283,7 @@ export function CourseLearning() {
               {Boolean(item.assignment_enabled) && <span>{item.project_url ? "作業已繳交" : "作業已開啟"}</span>}
             </button>
           ))}
+          {courses.length === 0 && <p className="learning-empty-note">目前沒有已開放的課程。</p>}
         </aside>
         <section>
           {!course ? (

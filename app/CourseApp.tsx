@@ -8,7 +8,7 @@ import { authorizedFetch, firebaseAuth, signInWithGoogle, signOutFirebase } from
 import { CourseLibrary } from "./library/CourseLibrary";
 import { ILC_SCRATCH_LABEL, isIlcScratchPlatform } from "./submission-links";
 
-export type AppMode = "library" | "student" | "teacher" | "admin" | "map" | "chapter";
+export type AppMode = "library" | "student" | "account" | "teacher" | "admin" | "map" | "chapter";
 
 type PortalRole = "superadmin" | "teacher" | "student" | "unknown";
 type PortalIdentity = {
@@ -286,7 +286,7 @@ function initialMode(): AppMode {
   if (typeof window === "undefined") return "library";
 
   const mode = new URLSearchParams(window.location.search).get("mode");
-  if (mode === "library" || mode === "student" || mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
+  if (mode === "library" || mode === "student" || mode === "account" || mode === "teacher" || mode === "admin" || mode === "map" || mode === "chapter") return mode;
   return "library";
 }
 
@@ -424,8 +424,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     return current;
   }
 
-  async function openMyCourses() {
-    if (await requirePortalRole(["student"], "我的課程")) window.location.assign("/learn");
+  async function openMyClasses() {
+    if (await requirePortalRole(["student"], "我的班級")) window.location.assign("/learn");
   }
 
   async function openCourseStudio() {
@@ -1093,9 +1093,9 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
           <div className="hero__actions">
             {identity?.role === "student" ? (
               <>
-                <button onClick={() => void openMyCourses()}>我的課程</button>
                 <button onClick={() => setMode("library")} className={mode === "library" ? "active" : ""}>公開課程庫</button>
-                <button onClick={() => setMode("student")} className={mode === "student" ? "active" : ""}>加入班級</button>
+                <button onClick={() => void openMyClasses()}>我的班級</button>
+                <button onClick={() => setMode("account")} className={mode === "account" ? "active" : ""}>我的帳號</button>
               </>
             ) : identity?.role === "teacher" ? (
               <>
@@ -1136,8 +1136,8 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
       {notice && <div className={`notice notice--${notice.type}`}>{notice.text}</div>}
 
-      <section className={`layout ${mode === "library" || mode === "teacher" || mode === "admin" ? "layout--backend" : ""}`}>
-        {mode !== "library" && mode !== "teacher" && mode !== "admin" && (
+      <section className={`layout ${mode === "library" || mode === "account" || mode === "teacher" || mode === "admin" ? "layout--backend" : ""}`}>
+        {mode !== "library" && mode !== "account" && mode !== "teacher" && mode !== "admin" && (
           <aside className="chapter-rail">
             <div className="rail-head">
               <span>章節</span>
@@ -1167,6 +1167,39 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
 
         <section className="workspace">
           {mode === "library" && <CourseLibrary embedded />}
+
+          {mode === "account" && identity?.role === "student" && (
+            <div className="surface student-account">
+              <div className="section-title">
+                <div>
+                  <p className="eyebrow">My Account</p>
+                  <h2>我的帳號</h2>
+                </div>
+              </div>
+              <div className="student-account__card">
+                <div className="student-account__avatar" aria-hidden="true">
+                  {identity.name.trim().slice(0, 1).toUpperCase() || "學"}
+                </div>
+                <div className="student-account__identity">
+                  <span>學生帳號</span>
+                  <h3>{identity.name}</h3>
+                  <p>{identity.email}</p>
+                </div>
+                <dl>
+                  <div><dt>身分</dt><dd>{portalRoleLabel(identity.role)}</dd></div>
+                  <div><dt>帳號狀態</dt><dd>{accountStatusLabel(identity.status)}</dd></div>
+                  <div><dt>登入方式</dt><dd>Google 帳號</dd></div>
+                </dl>
+              </div>
+              <div className="student-account__actions">
+                <p>班級、課程進度與作品紀錄會依此 Google 帳號保存。</p>
+                <div>
+                  <button type="button" onClick={() => void openMyClasses()}>前往我的班級</button>
+                  <button type="button" className="ghost" onClick={() => void logoutPortal()}>登出帳號</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {mode === "student" && (
             <div className="surface" id="student-entry">
