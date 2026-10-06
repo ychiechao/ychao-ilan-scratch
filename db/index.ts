@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
+import { yilanSchools } from "./yilan-schools";
 
 export function getDb() {
   if (!env.DB) {
@@ -388,6 +389,18 @@ export async function ensureDb() {
       db.prepare("UPDATE badges SET badge_name = '遊戲裁判' WHERE chapter_no = 10"),
       db.prepare("UPDATE badges SET badge_name = '時間挑戰者' WHERE chapter_no = 11"),
       db.prepare("INSERT INTO app_migrations (id) VALUES ('swap-chapters-10-11')"),
+    ]);
+  }
+  const schoolCatalog = await db
+    .prepare("SELECT id FROM app_migrations WHERE id = 'seed-yilan-schools-2026'")
+    .first();
+  if (!schoolCatalog) {
+    await db.batch([
+      ...yilanSchools.map((school) => db.prepare(
+        `INSERT INTO schools (id, name, division, enabled) VALUES (?, ?, ?, 1)
+         ON CONFLICT(name) DO UPDATE SET division = excluded.division, enabled = 1, updated_at = CURRENT_TIMESTAMP`
+      ).bind(school.id, school.name, school.division)),
+      db.prepare("INSERT OR IGNORE INTO app_migrations (id) VALUES ('seed-yilan-schools-2026')"),
     ]);
   }
   return db;
