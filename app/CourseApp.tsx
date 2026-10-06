@@ -2016,6 +2016,7 @@ function AdminConsole({
           <div className="admin-user-list">
             {visibleUsers.map((item) => {
               const permissions = new Map(dashboard.permissions.filter((permission) => permission.teacher_id === item.id).map((permission) => [permission.course_id, Boolean(permission.allowed)]));
+              const assignedSchoolIds = (item.school_ids || item.school_id || "").split(",").filter(Boolean);
               return <article key={`${item.user_type}:${item.id}`} className="admin-user-card">
                 <div className="admin-user-identity">
                   <span>{item.role === "superadmin" ? "超級管理者" : item.user_type === "teacher" ? "教師" : "學生"}</span>
@@ -2039,16 +2040,19 @@ function AdminConsole({
                   const form = new FormData(event.currentTarget);
                   void onAction({ action: "user_profile", userType: item.user_type, userId: item.id, schoolId: form.get("schoolId"), schoolIds: form.getAll("schoolIds"), role: form.get("role"), status: form.get("status") }, "使用者資料已更新。");
                 }}>
-                  {item.user_type === "teacher" ? <fieldset className="admin-school-checks">
-                    <legend>任教學校</legend>
-                    {dashboard.schools.map((school) => {
-                      const assigned = new Set((item.school_ids || item.school_id || "").split(",").filter(Boolean));
-                      return <label key={school.id}><input type="checkbox" name="schoolIds" value={school.id} defaultChecked={assigned.has(school.id)} disabled={!school.enabled && !assigned.has(school.id)} />{school.name}{school.enabled ? "" : "（停用）"}</label>;
-                    })}
-                    {dashboard.schools.length === 0 && <small>請先建立學校。</small>}
-                  </fieldset> : <label>學校<select name="schoolId" defaultValue={item.school_id ?? ""}><option value="">未指定</option>{dashboard.schools.map((school) => <option key={school.id} value={school.id} disabled={!school.enabled && school.id !== item.school_id}>{school.name}{school.enabled ? "" : "（停用）"}</option>)}</select></label>}
-                  <label>身分<select name="role" defaultValue={item.role} disabled={item.user_type === "student"}><option value="student">學生</option><option value="teacher">教師</option><option value="superadmin">超級管理者</option></select></label>
-                  <label>帳號狀態<select name="status" defaultValue={item.status}><option value="pending">待啟用</option><option value="active">啟用</option><option value="disabled">停用</option>{item.user_type === "student" && <option value="removed">已移除</option>}</select></label>
+                  {item.user_type === "teacher" ? <TeacherSchoolPicker
+                    key={`${item.id}:${assignedSchoolIds.join(",")}`}
+                    schools={dashboard.schools}
+                    assignedIds={assignedSchoolIds}
+                  /> : <label>學校<select name="schoolId" defaultValue={item.school_id ?? ""}><option value="">未指定</option>{dashboard.schools.map((school) => <option key={school.id} value={school.id} disabled={!school.enabled && school.id !== item.school_id}>{school.name}{school.enabled ? "" : "（停用）"}</option>)}</select></label>}
+                  <label>系統身分<select name="role" defaultValue={item.role}>
+                    {item.user_type === "student" ? <option value="student">學生</option> : <><option value="teacher">教師</option><option value="superadmin">超級管理者</option></>}
+                  </select></label>
+                  <label>帳號狀態<select name="status" defaultValue={item.status}>
+                    {item.user_type === "teacher" && <option value="pending">待啟用</option>}
+                    <option value="active">啟用</option><option value="disabled">停用</option>
+                    {item.user_type === "student" && <option value="removed">已移出班級</option>}
+                  </select></label>
                   <button disabled={busy}>儲存</button>
                 </form>
                 {item.user_type === "teacher" && item.role !== "superadmin" && publishedCourses.length > 0 && <details className="admin-permissions">
@@ -2126,6 +2130,73 @@ function AdminConsole({
       </section>}
     </div>
   );
+}
+
+function TeacherSchoolPicker({ schools, assignedIds }: { schools: AdminSchool[]; assignedIds: string[] }) {
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(() => new Set(assignedIds));
+  const normalizedQuery = query.trim().toLocaleLowerCase("zh-TW");
+  const selectedNames = schools.filter((school) => selected.has(school.id)).map((school) => school.name);
+  const summary = selectedNames.length === 0
+    ? "尚未指定"
+    : `${selectedNames.slice(0, 3).join("、")}${selectedNames.length > 3 ? `，另 ${selectedNames.length - 3} 所` : ""}`;
+  const groups = [
+    { division: "E", label: "國小" },
+    { division: "J", label: "國中" },
+    { division: "unclassified", label: "其他" },
+  ];
+  const visibleCount = schools.filter((school) => !normalizedQuery || school.name.toLocaleLowerCase("zh-TW").includes(normalizedQuery)).length;
+
+  function toggleSchool(schoolId: string, checked: boolean) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (checked) next.add(schoolId);
+      else next.delete(schoolId);
+      return next;
+    });
+  }
+
+  return <details className="admin-school-picker">
+    <summary>
+      <span className="admin-school-picker__title">任教學校</span>
+      <span className="admin-school-picker__summary">{summary}</span>
+      <span className="admin-school-picker__count">{selected.size} 所</span>
+    </summary>
+    <div className="admin-school-picker__panel">
+      <label className="admin-school-picker__search">
+        <span>搜尋學校</span>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="輸入校名快速篩選" />
+      </label>
+      {schools.length === 0 && <p className="admin-school-picker__empty">請先到「學校管理」建立學校。</p>}
+      {schools.length > 0 && visibleCount === 0 && <p className="admin-school-picker__empty">找不到符合「{query.trim()}」的學校。</p>}
+      <div className="admin-school-picker__groups">
+        {groups.map((group) => {
+          const groupSchools = schools.filter((school) => (school.division ?? "unclassified") === group.division);
+          if (groupSchools.length === 0) return null;
+          return <fieldset key={group.division} className="admin-school-group">
+            <legend>{group.label}<span>{groupSchools.filter((school) => selected.has(school.id)).length}/{groupSchools.length}</span></legend>
+            <div>
+              {groupSchools.map((school) => {
+                const matches = !normalizedQuery || school.name.toLocaleLowerCase("zh-TW").includes(normalizedQuery);
+                const checked = selected.has(school.id);
+                return <label key={school.id} className="admin-school-option" hidden={!matches}>
+                  <input
+                    type="checkbox"
+                    name="schoolIds"
+                    value={school.id}
+                    checked={checked}
+                    disabled={!school.enabled && !checked}
+                    onChange={(event) => toggleSchool(school.id, event.target.checked)}
+                  />
+                  <span>{school.name}{school.enabled ? "" : "（停用）"}</span>
+                </label>;
+              })}
+            </div>
+          </fieldset>;
+        })}
+      </div>
+    </div>
+  </details>;
 }
 
 function TeacherDashboard({

@@ -106,17 +106,18 @@ export async function PATCH(request: Request) {
       if (!result.meta.changes) return jsonError("找不到學生。", 404);
     } else {
       const role = payload?.role === "superadmin" ? "superadmin" : "teacher";
-      if (userId === admin.teacher.id && (role !== "superadmin" || status !== "active")) return jsonError("不能停用或降級目前登入的超管帳號。");
+      const teacherStatus = ["pending", "active", "disabled"].includes(status) ? status : "disabled";
+      if (userId === admin.teacher.id && (role !== "superadmin" || teacherStatus !== "active")) return jsonError("不能停用或降級目前登入的超管帳號。");
       const schoolIds = [...new Set((requestedSchoolIds.length ? requestedSchoolIds : schoolId ? [schoolId] : []).filter((id) => schoolMap.has(id)))];
       const currentAssignments = (await db.prepare(
         "SELECT school_id FROM teacher_school_assignments WHERE teacher_id = ?"
       ).bind(userId).all<{ school_id: string }>()).results ?? [];
       const currentSchoolIds = new Set(currentAssignments.map((item) => item.school_id));
       if (schoolIds.some((id) => !schoolMap.get(id)?.enabled && !currentSchoolIds.has(id))) return jsonError("已停用的學校不能再指派給教師。");
-      if (role === "teacher" && status === "active" && schoolIds.length === 0) return jsonError("啟用教師前，請至少指定一所任教學校。");
+      if (role === "teacher" && teacherStatus === "active" && schoolIds.length === 0) return jsonError("啟用教師前，請至少指定一所任教學校。");
       const primarySchool = schoolMap.get(schoolIds[0] ?? "");
       const result = await db.prepare("UPDATE teachers SET school_id = ?, school_name = ?, role = ?, status = ? WHERE id = ?")
-        .bind(primarySchool?.id ?? null, primarySchool?.name ?? "", role, status, userId).run();
+        .bind(primarySchool?.id ?? null, primarySchool?.name ?? "", role, teacherStatus, userId).run();
       if (!result.meta.changes) return jsonError("找不到教師。", 404);
       await db.prepare("DELETE FROM teacher_school_assignments WHERE teacher_id = ?").bind(userId).run();
       if (schoolIds.length > 0) {
@@ -129,7 +130,7 @@ export async function PATCH(request: Request) {
           .bind(primarySchool.id, userId).run();
       }
     }
-    await logAdminAction(db, admin.teacher.id, "user_profile", { userType, userId, schoolId, schoolIds: requestedSchoolIds, status });
+    await logAdminAction(db, admin.teacher.id, "user_profile", { userType, userId, schoolId, schoolIds: requestedSchoolIds, role: payload?.role, status });
     return Response.json({ ok: true });
   }
   if (action === "course_permission") {
