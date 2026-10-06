@@ -75,9 +75,11 @@ export function CourseLearning() {
   const [assignmentEnabled, setAssignmentEnabled] = useState(false);
   const [projectUrl, setProjectUrl] = useState("");
   const [savedProjectUrl, setSavedProjectUrl] = useState("");
-  const [message, setMessage] = useState("請使用已加入班級的學生 Google 帳號登入。");
+  const [message, setMessage] = useState("正在確認 Google 登入狀態…");
   const [busy, setBusy] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [authReady, setAuthReady] = useState(false);
 
   async function load() {
     const data = await json<{ courses: CourseItem[]; classes: StudentClassItem[] }>(await authorizedFetch("/api/student/courses"));
@@ -87,18 +89,22 @@ export function CourseLearning() {
   }
 
   useEffect(() => onAuthStateChanged(firebaseAuth, (user) => {
-    if (user) void load().catch(() => undefined);
+    setAuthReady(true);
+    setAccountEmail(user?.email ?? "");
+    if (user) {
+      void load().catch((error) => setMessage(error instanceof Error ? error.message : "無法讀取班級資料。"));
+    } else {
+      setCourses([]);
+      setClasses([]);
+      setMessage("請先使用 Google 帳號登入，再加入班級。");
+    }
   }), []);
 
   async function login() {
     setBusy(true);
     try {
       const google = await signInWithGoogle();
-      await json(await fetch("/api/student/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ idToken: google.idToken }),
-      }));
+      setAccountEmail(google.email);
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "登入失敗。");
@@ -113,7 +119,11 @@ export function CourseLearning() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
-      const google = await signInWithGoogle();
+      const currentUser = firebaseAuth.currentUser;
+      const google = currentUser
+        ? { idToken: await currentUser.getIdToken(), email: currentUser.email ?? "" }
+        : await signInWithGoogle();
+      setAccountEmail(google.email);
       await json(await fetch("/api/student/join", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -223,7 +233,13 @@ export function CourseLearning() {
           <button type="button" onClick={() => setJoinOpen((current) => !current)} aria-expanded={joinOpen}>
             {joinOpen ? "收起加入表單" : "加入班級"}
           </button>
-          <button onClick={login} disabled={busy}>學生 Google 登入</button>
+          {accountEmail ? (
+            <span className="learning-account-chip" title={accountEmail}>已登入 {accountEmail}</span>
+          ) : (
+            <button onClick={login} disabled={!authReady || busy}>
+              {authReady ? "學生 Google 登入" : "確認登入狀態…"}
+            </button>
+          )}
         </div>
       </header>
       <div className="studio-message">{message}</div>
@@ -237,7 +253,7 @@ export function CourseLearning() {
           <label>班級代碼<input name="classCode" placeholder="YL-ABCDE" autoComplete="off" required /></label>
           <label>座號<input name="seatNo" placeholder="例如 08" autoComplete="off" required /></label>
           <label>暱稱<input name="nickname" placeholder="例如 小宜" autoComplete="nickname" required /></label>
-          <button disabled={busy}>確認加入</button>
+          <button disabled={!authReady || busy}>{accountEmail ? "確認加入" : "登入並加入"}</button>
         </form>
       )}
       <section className="student-class-summary" aria-label="已加入班級">

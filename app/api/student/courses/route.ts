@@ -1,10 +1,10 @@
 import { ensureDb } from "../../../../db";
-import { requireStudent } from "../../auth";
+import { requireActor } from "../../auth";
 import { cleanText, jsonError } from "../../_lib";
 import { loadCourse } from "../../courses/_shared";
 
 export async function GET(request: Request) {
-  const actor = await requireStudent(request);
+  const actor = await requireActor(request);
   if (actor instanceof Response) return actor;
   const url = new URL(request.url);
   const courseId = cleanText(url.searchParams.get("id"), 100);

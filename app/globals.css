@@ -2515,6 +2515,21 @@ td:first-child span {
 .learning-layout > aside small { font-size: .75rem; opacity: .72; }
 .learning-layout > aside span { font-size: .78rem; opacity: .75; }
 .learning-header-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.learning-account-chip {
+  background: #e3f5eb;
+  border: 1px solid #a9cfb8;
+  border-radius: 7px;
+  color: #176348;
+  display: inline-flex;
+  font-size: .82rem;
+  font-weight: 900;
+  max-width: 280px;
+  min-height: 40px;
+  overflow: hidden;
+  padding: 9px 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .student-class-join,
 .student-class-summary { margin: 0 auto 18px; max-width: 1200px; }
 .student-class-join {
