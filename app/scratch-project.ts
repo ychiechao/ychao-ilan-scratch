@@ -210,11 +210,22 @@ export function evaluateRubric(summary: ScratchProjectSummary, rules: RubricRule
   const results = rules.map((rubric) => evaluateOne(summary, rubric));
   const automatic = results.filter((_, index) => rules[index].mode !== "manual");
   const score = automatic.reduce((sum, item) => sum + item.score, 0);
-  const passed = rules.every((rubric, index) => !rubric.required || results[index].passed !== false);
+  const hasEvaluatedRule = results.some((item) => item.passed !== null);
+  const passed = hasEvaluatedRule && rules.every((rubric, index) => !rubric.required || results[index].passed !== false);
   return { score, passed, results };
 }
 
 function evaluateOne(summary: ScratchProjectSummary, rubric: RubricRule): RubricResult {
+  const legacyCheckId = typeof rubric.config.legacyCheckId === "string" ? rubric.config.legacyCheckId : "";
+  if (legacyCheckId) {
+    const passed = evaluateLegacyCheck(summary, legacyCheckId);
+    return {
+      ruleId: rubric.id,
+      passed,
+      score: passed ? rubric.weight : 0,
+      detail: passed ? "這項學習目標已經達成。" : legacyCheckHint(legacyCheckId),
+    };
+  }
   if (rubric.mode === "manual" || rubric.type === "manual_review") {
     return { ruleId: rubric.id, passed: null, score: 0, detail: "此項由教師人工確認。" };
   }
@@ -225,6 +236,76 @@ function evaluateOne(summary: ScratchProjectSummary, rubric: RubricRule): Rubric
     score: passed ? rubric.weight : 0,
     detail: passed ? rubric.passFeedback : rubric.failFeedback,
   };
+}
+
+function evaluateLegacyCheck(summary: ScratchProjectSummary, checkId: string): boolean {
+  const count = (opcode: string) => summary.blockCounts[opcode] ?? 0;
+  const has = (opcode: string, minimum = 1) => count(opcode) >= minimum;
+  const hasMovement = has("motion_changexby") || has("motion_changeyby") || has("motion_movesteps") || has("motion_glidesecstoxy");
+  const customVariables = summary.variables.filter((name) => !/^my variable$/i.test(name.trim()));
+
+  switch (checkId) {
+    case "save-project": return summary.valid;
+    case "green-flag": return has("event_whenflagclicked") && has("motion_gotoxy");
+    case "move-block": return has("control_repeat") && has("motion_movesteps");
+    case "debug-move": return has("motion_turnleft", 4) || has("motion_turnright", 4) || has("motion_ifonedgebounce");
+    case "glide-start": return has("event_whenflagclicked") && has("motion_gotoxy");
+    case "glide-loop": return has("motion_glidesecstoxy", 4);
+    case "glide-random": return has("motion_glidesecstoxy", 4) && has("operator_random", 4);
+    case "coordinate-start": return has("event_whenflagclicked") && has("motion_gotoxy");
+    case "coordinate-motion": return has("control_repeat", 4) && has("motion_changexby", 2) && has("motion_changeyby", 2);
+    case "coordinate-boundary": return has("motion_changexby", 2) && has("motion_changeyby", 2);
+    case "controller-start": return has("event_whenflagclicked") && has("motion_gotoxy");
+    case "controller-keys": return has("control_forever") && has("sensing_keypressed", 4) && has("control_if", 4);
+    case "controller-motion": return has("motion_changexby", 2) && has("motion_changeyby", 2);
+    case "supporting-sprite": return summary.spriteCount >= 2;
+    case "supporting-loop": return summary.targets.some((target) => !target.isStage
+      && target.scripts.some((script) => script.event === "event_whenflagclicked"
+        && script.opcodes.includes("motion_gotoxy")
+        && script.opcodes.includes("control_forever")
+        && script.opcodes.filter((opcode) => opcode === "motion_glidesecstoxy").length >= 2));
+    case "supporting-random": return has("motion_glidesecstoxy", 2) && has("operator_random", 2);
+    case "player-projectile": return summary.spriteCount >= 3 && has("event_whenflagclicked") && has("looks_hide");
+    case "player-launch": return has("event_whenkeypressed") && has("motion_goto") && has("looks_show");
+    case "player-flight": return has("control_repeat_until") && has("sensing_touchingobject", 2) && has("looks_hide", 2);
+    case "enemy-projectile": return summary.spriteCount >= 4 && has("event_whenflagclicked", 2) && has("looks_hide", 2);
+    case "enemy-launch": return has("motion_goto", 2) && has("looks_show", 2) && has("control_forever", 2);
+    case "enemy-collision": return has("sensing_touchingobject", 4) && has("looks_hide", 4);
+    case "clone-create": return has("control_forever") && has("control_wait") && has("operator_random") && has("control_create_clone_of");
+    case "clone-action": return has("control_start_as_clone") && hasMovement && has("sensing_touchingobject");
+    case "clone-delete": return has("control_delete_this_clone") && has("sensing_touchingobject");
+    case "score-variable": return customVariables.length > 0;
+    case "score-reset": return customVariables.length > 0 && has("data_setvariableto");
+    case "score-change": return has("data_changevariableby") && has("sensing_touchingobject");
+    case "broadcast-conditions": return customVariables.length >= 2 && has("operator_equals", 2);
+    case "broadcast-messages": return summary.broadcasts.length >= 2 && has("event_broadcast", 2) && has("event_whenbroadcastreceived", 2);
+    case "broadcast-results": return has("looks_show", 2) && has("control_stop", 2);
+    case "direct-conditions": return customVariables.length >= 2 && has("operator_equals", 2);
+    case "direct-wait": return has("control_wait_until", 2) && !has("event_broadcast");
+    case "direct-results": return has("looks_show", 2) && has("control_stop", 2);
+    case "timer-variable": return customVariables.some((name) => /時間|計時|timer|time/i.test(name)) && has("data_setvariableto");
+    case "timer-countdown": return has("control_repeat_until") && has("control_wait") && has("data_changevariableby");
+    case "timer-finish": return has("operator_equals") && has("control_stop");
+    case "complete-game": return has("event_whenflagclicked", 3) && has("looks_show") && has("control_stop");
+    case "core-systems": return summary.spriteCount >= 4 && has("sensing_keypressed") && has("sensing_touchingobject") && customVariables.length > 0;
+    case "playtest": return summary.valid && summary.blockCount >= 20;
+    default: return false;
+  }
+}
+
+function legacyCheckHint(checkId: string): string {
+  if (/start|green-flag|reset|variable/.test(checkId)) return "請檢查程式開始時，角色位置、方向或資料初始值是否已先設定完成。";
+  if (/glide|move|motion|loop|boundary|supporting/.test(checkId)) return "請檢查移動流程是否完整，並確認每一段動作都放在正確的重複範圍內。";
+  if (/random/.test(checkId)) return "請檢查隨機變化是否真的參與每一次動作，而不是只在開始時執行一次。";
+  if (/key|controller/.test(checkId)) return "請檢查按鍵偵測與四個方向的動作是否都在持續執行的流程中。";
+  if (/projectile|launch|flight|collision|enemy/.test(checkId)) return "請檢查發射前、飛行中與碰撞後三個階段是否都有對應處理。";
+  if (/clone/.test(checkId)) return "請檢查分身的建立、開始行動與結束清除流程是否都有執行。";
+  if (/score/.test(checkId)) return "請檢查記錄遊戲狀態的資料是否會先重設，並在事件發生後正確改變。";
+  if (/broadcast/.test(checkId)) return "請檢查勝負訊息是否有完整的送出、接收與畫面回應流程。";
+  if (/direct|result/.test(checkId)) return "請檢查勝負條件成立後，結果畫面與停止遊戲的流程是否完整。";
+  if (/timer/.test(checkId)) return "請檢查時間資料的初始值、倒數過程與歸零後的處理是否連接完整。";
+  if (/complete-game|core-systems|playtest/.test(checkId)) return "請從開始、遊玩到結束逐段測試，找出尚未連接完整的遊戲流程。";
+  return "這項目標尚未完整偵測到，請回到章節說明重新測試相關功能。";
 }
 
 function evaluateCondition(summary: ScratchProjectSummary, type: RubricRuleType, config: Record<string, unknown>, scope: RubricScope): boolean {

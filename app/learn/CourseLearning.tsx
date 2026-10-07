@@ -60,6 +60,7 @@ type CourseDetail = {
   }>;
 };
 
+type EvaluationResult = { ruleId: string; passed: boolean | null; detail: string };
 type Progress = { question_id: string; score: number; status: string; results_json: string };
 
 async function json<T>(response: Response): Promise<T> {
@@ -470,12 +471,34 @@ export function CourseLearning() {
                   <div className="learning-question-list">
                     {selectedLesson.questions.map((question) => {
                       const result = status(question.id);
+                      const evaluationResults = parseEvaluationResults(result?.results_json);
+                      const problems = evaluationResults.filter((item) => item.passed === false);
+                      const pendingReview = evaluationResults.filter((item) => item.passed === null);
                       return (
                         <section className="learning-question" key={question.id}>
-                          <div>
+                          <div className="learning-question__content">
                             <h3>{question.title}</h3>
                             <p>{questionDescription(question.prompt)}</p>
                             <small>{question.estimatedMinutes} 分鐘 · {question.rules.length} 項檢核</small>
+                            {problems.length > 0 && (
+                              <div className="learning-evaluation-feedback" role="status">
+                                <strong>可以再檢查</strong>
+                                <ul>
+                                  {problems.map((item) => (
+                                    <li key={item.ruleId}>
+                                      <b>{question.rules.find((rule) => rule.id === item.ruleId)?.label ?? "本章目標"}</b>
+                                      <span>{item.detail}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {result && problems.length === 0 && pendingReview.length > 0 && (
+                              <div className="learning-evaluation-feedback is-pending" role="status">
+                                <strong>等待確認</strong>
+                                <p>作品已完成分析，其中有項目需要由老師確認。</p>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <b className={result?.status === "passed" ? "total-ok" : "total-bad"}>
@@ -502,6 +525,22 @@ export function CourseLearning() {
 
 function questionDescription(prompt: string) {
   return prompt.split(/\n\n教學影片：/)[0]?.trim() || prompt;
+}
+
+function parseEvaluationResults(value?: string): EvaluationResult[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is EvaluationResult => Boolean(
+      item && typeof item === "object"
+      && typeof (item as EvaluationResult).ruleId === "string"
+      && (typeof (item as EvaluationResult).passed === "boolean" || (item as EvaluationResult).passed === null)
+      && typeof (item as EvaluationResult).detail === "string"
+    ));
+  } catch {
+    return [];
+  }
 }
 
 function videosFromQuestions(questions: CourseDetail["lessons"][number]["questions"]) {
