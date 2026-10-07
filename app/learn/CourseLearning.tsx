@@ -77,6 +77,7 @@ export function CourseLearning() {
   const [className, setClassName] = useState("");
   const [selectedAdoptionId, setSelectedAdoptionId] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState("");
+  const [courseView, setCourseView] = useState<"lesson" | "assignment">("lesson");
   const [assignmentEnabled, setAssignmentEnabled] = useState(false);
   const [projectUrl, setProjectUrl] = useState("");
   const [savedProjectUrl, setSavedProjectUrl] = useState("");
@@ -166,6 +167,7 @@ export function CourseLearning() {
           ? preferredLessonId
           : data.course.lessons[0]?.id ?? ""
       );
+      setCourseView("lesson");
       setProgress(data.progress);
       setMembershipId(data.membershipId);
       setClassName(data.class.name);
@@ -357,19 +359,70 @@ export function CourseLearning() {
                   <button
                     type="button"
                     key={lesson.id}
-                    className={selectedLesson?.id === lesson.id ? "active" : ""}
-                    aria-pressed={selectedLesson?.id === lesson.id}
-                    onClick={() => setSelectedLessonId(lesson.id)}
+                    className={courseView === "lesson" && selectedLesson?.id === lesson.id ? "active" : ""}
+                    aria-pressed={courseView === "lesson" && selectedLesson?.id === lesson.id}
+                    onClick={() => {
+                      setSelectedLessonId(lesson.id);
+                      setCourseView("lesson");
+                    }}
                   >
                     <b>{String(index + 1).padStart(2, "0")}</b>
                     <span><strong>{lesson.title}</strong><small>{passed}/{lesson.questions.length} 項完成</small></span>
                   </button>
                 );
               })}
+              {assignmentEnabled && (
+                <button
+                  type="button"
+                  className={`learning-assignment-nav ${courseView === "assignment" ? "active" : ""}`}
+                  aria-pressed={courseView === "assignment"}
+                  onClick={() => setCourseView("assignment")}
+                >
+                  <b>作業</b>
+                  <span>
+                    <strong>課程作業</strong>
+                    <small>{savedProjectUrl ? "已繳交作品" : "尚未繳交"}</small>
+                  </span>
+                </button>
+              )}
             </nav>
           </aside>
           <section className="learning-module">
-            {selectedLesson && (
+            {courseView === "assignment" && assignmentEnabled ? (
+              <>
+                <header className="learning-module__header learning-assignment-header">
+                  <div>
+                    <p className="eyebrow">Course Assignment</p>
+                    <h2>課程作業</h2>
+                    <p>完成整門課後，繳交一次作品網址即可。</p>
+                  </div>
+                  <span>
+                    繳交狀態
+                    <strong>{savedProjectUrl ? "已繳交" : "尚未繳交"}</strong>
+                  </span>
+                </header>
+                <form className="course-project-submit course-project-submit--standalone" onSubmit={submitProject}>
+                  <div>
+                    <h3>{course.title}</h3>
+                    <p>貼上你的 Scratch 作品網址；再次儲存會更新老師看到的作品。</p>
+                  </div>
+                  <label>
+                    作品網址
+                    <input
+                      type="url"
+                      value={projectUrl}
+                      onChange={(event) => setProjectUrl(event.target.value)}
+                      placeholder="https://s3.ilc.edu.tw/projects/356121701/"
+                      required
+                    />
+                  </label>
+                  <div className="course-project-submit__actions">
+                    {savedProjectUrl && <a href={savedProjectUrl} target="_blank" rel="noreferrer">查看已繳作品</a>}
+                    <button disabled={busy}>{savedProjectUrl ? "更新作業網址" : "繳交作業網址"}</button>
+                  </div>
+                </form>
+              </>
+            ) : selectedLesson ? (
               <>
                 <header className="learning-module__header">
                   <div>
@@ -438,32 +491,8 @@ export function CourseLearning() {
                     })}
                   </div>
                 </section>
-
-              {assignmentEnabled && (
-                <form className="course-project-submit" onSubmit={submitProject}>
-                  <div>
-                    <p className="eyebrow">Course Assignment</p>
-                    <h3>課程作業</h3>
-                    <p>貼上你的作品網址。重新儲存會更新老師看到的連結。</p>
-                  </div>
-                  <label>
-                    作品網址
-                    <input
-                      type="url"
-                      value={projectUrl}
-                      onChange={(event) => setProjectUrl(event.target.value)}
-                      placeholder="https://s3.ilc.edu.tw/projects/356121701/"
-                      required
-                    />
-                  </label>
-                  <div className="course-project-submit__actions">
-                    {savedProjectUrl && <a href={savedProjectUrl} target="_blank" rel="noreferrer">查看作品</a>}
-                    <button disabled={busy}>儲存作業網址</button>
-                  </div>
-                </form>
-              )}
               </>
-            )}
+            ) : null}
           </section>
         </div>
       )}

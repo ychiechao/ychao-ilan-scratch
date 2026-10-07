@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     .bind(createId("activity"), teacherId, JSON.stringify({ classId, schoolId })).run();
 
   if (courseVersionId) {
-    await db.prepare("INSERT INTO class_courses (id, class_id, course_version_id, sort_order, status) VALUES (?, ?, ?, 0, 'active')")
+    await db.prepare("INSERT INTO class_courses (id, class_id, course_version_id, sort_order, status, assignment_enabled) VALUES (?, ?, ?, 0, 'active', 1)")
       .bind(createId("adoption"), classId, courseVersionId).run();
   }
 

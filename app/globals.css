@@ -2636,6 +2636,8 @@ td:first-child span {
 .learning-chapter-nav nav button > span { display: grid; gap: 3px; opacity: 1; }
 .learning-chapter-nav nav button strong { font-size: .88rem; }
 .learning-chapter-nav nav button small { font-size: .72rem; opacity: .72; }
+.learning-chapter-nav nav .learning-assignment-nav { border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; margin-top: 7px; padding-top: 14px; }
+.learning-chapter-nav nav .learning-assignment-nav > b { font-size: .72rem; }
 .learning-module { background: white; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .learning-module__header { align-items: start; background: #eaf5ee; display: flex; gap: 20px; justify-content: space-between; padding: 26px; }
 .learning-module__header h2 { font-size: 2rem; margin: 4px 0 8px; }
@@ -2651,6 +2653,8 @@ td:first-child span {
 .learning-video-grid h4 { font-size: .95rem; margin: 0 0 8px; }
 .learning-question-list { display: grid; gap: 10px; margin-top: 16px; }
 .learning-module > .course-project-submit { border-width: 1px 0 0; border-radius: 0; }
+.learning-assignment-header { min-height: 150px; }
+.course-project-submit--standalone { border-width: 1px 0 0; border-radius: 0; padding: 26px; }
 .learning-question { align-items: center; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) auto; padding: 14px; }
 .learning-question h3,
 .learning-question p { margin: 0 0 6px; }

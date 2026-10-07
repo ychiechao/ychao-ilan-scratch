@@ -177,7 +177,7 @@ export const classCourses = sqliteTable("class_courses", {
   courseVersionId: text("course_version_id").notNull().references(() => courseVersions.id),
   sortOrder: integer("sort_order").notNull().default(0),
   status: text("status").notNull().default("active"),
-  assignmentEnabled: integer("assignment_enabled").notNull().default(0),
+  assignmentEnabled: integer("assignment_enabled").notNull().default(1),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("class_courses_version_idx").on(table.classId, table.courseVersionId),

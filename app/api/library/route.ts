@@ -83,8 +83,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   }
   const sort = await db.prepare("SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM class_courses WHERE class_id = ?").bind(classId).first<{ next_order: number }>();
-  await db.prepare(`INSERT INTO class_courses (id, class_id, course_version_id, sort_order, status)
-    VALUES (?, ?, ?, ?, 'active') ON CONFLICT(class_id, course_version_id) DO UPDATE SET status = 'active'`)
+  await db.prepare(`INSERT INTO class_courses (id, class_id, course_version_id, sort_order, status, assignment_enabled)
+    VALUES (?, ?, ?, ?, 'active', 1) ON CONFLICT(class_id, course_version_id) DO UPDATE SET status = 'active'`)
     .bind(createId("adoption"), classId, versionId, Number(sort?.next_order ?? 0)).run();
   return Response.json({ ok: true }, { status: 201 });
 }

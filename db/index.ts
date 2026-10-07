@@ -220,7 +220,7 @@ const createStatements = [
     course_version_id TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'active',
-    assignment_enabled INTEGER NOT NULL DEFAULT 0,
+    assignment_enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id),
     FOREIGN KEY (course_version_id) REFERENCES course_versions(id),
@@ -361,7 +361,7 @@ export async function ensureDb() {
   }
   const classCourseColumns = await db.prepare("PRAGMA table_info(class_courses)").all<{ name: string }>();
   if ((classCourseColumns.results ?? []).length > 0 && !(classCourseColumns.results ?? []).some((column) => column.name === "assignment_enabled")) {
-    await db.prepare("ALTER TABLE class_courses ADD assignment_enabled INTEGER NOT NULL DEFAULT 0").run();
+    await db.prepare("ALTER TABLE class_courses ADD assignment_enabled INTEGER NOT NULL DEFAULT 1").run();
   }
   const assetColumns = await db.prepare("PRAGMA table_info(file_assets)").all<{ name: string }>();
   if ((assetColumns.results ?? []).length > 0 && !(assetColumns.results ?? []).some((column) => column.name === "storage_provider")) {

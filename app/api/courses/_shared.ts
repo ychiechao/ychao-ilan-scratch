@@ -116,8 +116,8 @@ export async function ensureOfficialSeedCourse() {
     });
   });
   await db.batch(statements);
-  await db.prepare(`INSERT OR IGNORE INTO class_courses (id, class_id, course_version_id, sort_order, status)
-    SELECT 'official_adoption_' || id, id, ?, 0, 'active' FROM classes`).bind(versionId).run();
+  await db.prepare(`INSERT OR IGNORE INTO class_courses (id, class_id, course_version_id, sort_order, status, assignment_enabled)
+    SELECT 'official_adoption_' || id, id, ?, 0, 'active', 1 FROM classes`).bind(versionId).run();
 }
 
 function camelCourse(row: Record<string, unknown>) {
