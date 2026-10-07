@@ -474,6 +474,7 @@ export function CourseLearning() {
                       const evaluationResults = parseEvaluationResults(result?.results_json);
                       const problems = evaluationResults.filter((item) => item.passed === false);
                       const pendingReview = evaluationResults.filter((item) => item.passed === null);
+                      const needsRecheck = Boolean(result && result.score === 0 && evaluationResults.length > 0 && pendingReview.length === evaluationResults.length);
                       return (
                         <section className="learning-question" key={question.id}>
                           <div className="learning-question__content">
@@ -493,7 +494,12 @@ export function CourseLearning() {
                                 </ul>
                               </div>
                             )}
-                            {result && problems.length === 0 && pendingReview.length > 0 && (
+                            {needsRecheck ? (
+                              <div className="learning-evaluation-feedback is-pending" role="status">
+                                <strong>請重新檢核</strong>
+                                <p>這筆紀錄來自舊版評測，請重新上傳同一個作品以取得新的檢查提示。</p>
+                              </div>
+                            ) : result && problems.length === 0 && pendingReview.length > 0 && (
                               <div className="learning-evaluation-feedback is-pending" role="status">
                                 <strong>等待確認</strong>
                                 <p>作品已完成分析，其中有項目需要由老師確認。</p>
@@ -501,8 +507,8 @@ export function CourseLearning() {
                             )}
                           </div>
                           <div>
-                            <b className={result?.status === "passed" ? "total-ok" : "total-bad"}>
-                              {result ? `${result.score} 分／${result.status === "passed" ? "通過" : "待修正"}` : "尚未檢核"}
+                            <b className={!needsRecheck && result?.status === "passed" ? "total-ok" : "total-bad"}>
+                              {needsRecheck ? "請重新檢核" : result ? `${result.score} 分／${result.status === "passed" ? "通過" : "待修正"}` : "尚未檢核"}
                             </b>
                             <label className="button-label">
                               選擇 .sb3 自我檢核
