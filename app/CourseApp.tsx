@@ -81,6 +81,9 @@ type Submission = {
   feedback?: string;
   updated_at?: string;
   updatedAt?: string;
+  attempted_count?: number;
+  passed_count?: number;
+  question_count?: number;
 };
 type Badge = {
   id: string;
@@ -235,6 +238,14 @@ function statusLabel(status?: string) {
   return "未開始";
 }
 
+function submissionStatusLabel(submission: Submission) {
+  const passed = Number(submission.passed_count ?? 0);
+  const total = Number(submission.question_count ?? 0);
+  if (submission.status === "in_progress" && total > 0) return `${passed}/${total} 完成`;
+  if (submission.status === "needs_fix" && total > 1) return `待修正 ${passed}/${total}`;
+  return statusLabel(submission.status);
+}
+
 function enrollmentEnabledOf(item?: ClassInfo | null) {
   return item?.enrollmentEnabled ?? Boolean(item?.enrollment_enabled ?? 1);
 }
@@ -356,6 +367,25 @@ export function CourseApp({ initialModeValue }: { initialModeValue?: AppMode } =
     if (teacher?.status !== "active") return;
     void authorizedFetch("/api/library").then((response) => readJson<{ courses: TeacherCourseOption[] }>(response)).then((data) => setTeacherCourses(data.courses)).catch(() => undefined);
   }, [teacher?.id, teacher?.status]);
+
+  useEffect(() => {
+    if (mode !== "teacher" || teacher?.status !== "active" || !selectedClassId) return;
+    const refreshProgress = () => {
+      if (document.visibilityState !== "visible") return;
+      void authorizedFetch(`/api/teacher/dashboard?classId=${encodeURIComponent(selectedClassId)}`)
+        .then((response) => readJson<Dashboard>(response))
+        .then(setDashboard)
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(refreshProgress, 30_000);
+    window.addEventListener("focus", refreshProgress);
+    document.addEventListener("visibilitychange", refreshProgress);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshProgress);
+      document.removeEventListener("visibilitychange", refreshProgress);
+    };
+  }, [mode, selectedClassId, teacher?.id, teacher?.status]);
 
   function show(type: NoticeType, text: string) {
     setNotice({ type, text });
@@ -1774,7 +1804,7 @@ function TeacherDashboard({
                               補交
                             </button>
                           </div>
-                        ) : submission ? statusLabel(submission.status) : "-"}
+                        ) : submission ? submissionStatusLabel(submission) : "-"}
                       </td>
                     );
                   })}
