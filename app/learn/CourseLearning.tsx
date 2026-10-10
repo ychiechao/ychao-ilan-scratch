@@ -84,6 +84,7 @@ export function CourseLearning() {
   const [savedProjectUrl, setSavedProjectUrl] = useState("");
   const [message, setMessage] = useState("正在確認 Google 登入狀態…");
   const [busy, setBusy] = useState(false);
+  const [evaluatingQuestionId, setEvaluatingQuestionId] = useState("");
   const [joinOpen, setJoinOpen] = useState(false);
   const [accountEmail, setAccountEmail] = useState("");
   const [authReady, setAuthReady] = useState(false);
@@ -185,6 +186,8 @@ export function CourseLearning() {
     const file = event.target.files?.[0];
     if (!file || !course || !membershipId) return;
     setBusy(true);
+    setEvaluatingQuestionId(questionId);
+    setMessage("作品檢測中，正在分析角色、積木與程式流程…");
     try {
       const analysis = await inspectScratchProject(file);
       const data = await json<{
@@ -203,6 +206,7 @@ export function CourseLearning() {
       setMessage(error instanceof Error ? error.message : "檢核失敗。");
     } finally {
       setBusy(false);
+      setEvaluatingQuestionId("");
       event.target.value = "";
     }
   }
@@ -475,6 +479,7 @@ export function CourseLearning() {
                       const problems = evaluationResults.filter((item) => item.passed === false);
                       const pendingReview = evaluationResults.filter((item) => item.passed === null);
                       const needsRecheck = Boolean(result && result.score === 0 && evaluationResults.length > 0 && pendingReview.length === evaluationResults.length);
+                      const isEvaluating = evaluatingQuestionId === question.id;
                       return (
                         <section className="learning-question" key={question.id}>
                           <div className="learning-question__content">
@@ -510,10 +515,16 @@ export function CourseLearning() {
                             <b className={!needsRecheck && result?.status === "passed" ? "total-ok" : "total-bad"}>
                               {needsRecheck ? "請重新檢核" : result ? `${result.score} 分／${result.status === "passed" ? "通過" : "待修正"}` : "尚未檢核"}
                             </b>
-                            <label className="button-label">
-                              選擇 .sb3 自我檢核
+                            <label className={`button-label${isEvaluating ? " is-loading" : ""}`} aria-busy={isEvaluating}>
+                              {isEvaluating && <span className="evaluation-spinner" aria-hidden="true" />}
+                              <span>{isEvaluating ? "作品檢測中…" : "選擇 .sb3 自我檢核"}</span>
                               <input type="file" accept=".sb3" hidden disabled={busy} onChange={(event) => void submit(question.id, event)} />
                             </label>
+                            {isEvaluating && (
+                              <span className="evaluation-loading-note" role="status" aria-live="polite">
+                                正在分析角色、積木與程式流程，請稍候。
+                              </span>
+                            )}
                           </div>
                         </section>
                       );

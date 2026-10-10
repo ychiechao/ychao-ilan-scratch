@@ -2660,6 +2660,11 @@ td:first-child span {
 .learning-question p { margin: 0 0 6px; }
 .learning-question__content { min-width: 0; }
 .learning-question > div:last-child { display: grid; gap: 8px; justify-items: end; }
+.button-label.is-loading { cursor: wait; gap: 8px; opacity: .88; }
+.evaluation-spinner { animation: evaluation-spin .8s linear infinite; border: 2px solid rgb(255 255 255 / 38%); border-radius: 50%; border-top-color: white; flex: 0 0 auto; height: 16px; width: 16px; }
+.evaluation-loading-note { color: var(--muted); font-size: .76rem; line-height: 1.4; max-width: 210px; text-align: right; }
+@keyframes evaluation-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .evaluation-spinner { animation-duration: 1.8s; } }
 .learning-evaluation-feedback { background: #fff8e1; border-left: 4px solid #d9a928; display: grid; gap: 8px; margin-top: 13px; padding: 11px 13px; }
 .learning-evaluation-feedback > strong { color: #765714; font-size: .86rem; }
 .learning-evaluation-feedback ul { display: grid; gap: 9px; list-style: none; margin: 0; padding: 0; }
@@ -2721,6 +2726,7 @@ td:first-child span {
   .student-account__card dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .student-account__actions { align-items: stretch; flex-direction: column; }
   .learning-question > div:last-child { justify-items: stretch; }
+  .evaluation-loading-note { max-width: none; text-align: left; }
   .drive-status-card,
   .drive-setup-grid { grid-template-columns: 1fr; }
   .admin-section-heading,
